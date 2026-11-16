@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Recipes</title>
+<style>
+:root{--bg:#FBF6EE;--card:#fff;--ink:#3B2A22;--dim:#8C7B70;--line:#EADFD2;--ac:#D9502F;--acbg:#FBE3DA;--teal:#3E7C8C;--serif:"Songti SC","Noto Serif SC",Georgia,serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:#fff;border:1px solid var(--line);border-radius:10px;padding:5px 12px}
+button:hover{border-color:#cdb9a6}
+button.pri{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+button.out{border-color:var(--ac);color:var(--ac);font-weight:600}
+button.ic{border:0;background:none;padding:4px;display:inline-flex;color:#B8A798}
+button.ic:hover{color:var(--ac)}
+input,select,textarea{width:100%;background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 10px}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid #F3B9A8;outline-offset:1px}
+textarea{min-height:110px;resize:vertical}
+[hidden]{display:none!important}
+.dim{color:var(--dim)} .row{display:flex;gap:10px;align-items:center} .sp{flex:1}
+#top{height:64px;display:flex;align-items:center;gap:14px;padding:0 24px;background:#FFFDF9;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.logo{display:flex;align-items:center;gap:10px;font:700 18px var(--serif);white-space:nowrap}
+.logo i{width:24px;height:24px;border-radius:8px;background:var(--ac)}
+#q{max-width:480px;border-radius:20px;padding-left:16px}
+.body{display:flex;min-height:calc(100vh - 64px)}
+#side{width:240px;flex:none;padding:18px 18px 30px 24px;border-right:1px solid var(--line);position:sticky;top:64px;align-self:flex-start;max-height:calc(100vh - 64px);overflow:auto}
+.nosb #side{display:none}
+.grp{margin:18px 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#A8978B}
+.it{display:flex;align-items:center;gap:8px;height:33px;padding:0 10px;margin:0 -10px;border-radius:8px;cursor:pointer;color:#5B463A}
+.it:hover{background:#F5EBDD} .it.on{background:var(--acbg);color:#B83A1C;font-weight:600}
+.it .n{margin-left:auto;font-size:12px;color:#A8978B}
+.sw{width:10px;height:10px;border-radius:50%}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tg{padding:1px 10px;border-radius:14px;background:#F2E9DD;color:#6B5649;font-size:13px;cursor:pointer;border:0}
+.tg.on{background:var(--teal);color:#fff}
+#content{flex:1;min-width:0;padding:20px 28px 40px}
+.bar{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.bar select{width:auto}
+#grid.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
+#grid.empty{text-align:center;padding:100px 20px;color:var(--dim)}
+#grid.empty p{font:600 20px var(--serif);color:var(--ink)}
+.card{background:var(--card);border:1px solid #EFE4D6;border-radius:14px;overflow:hidden;box-shadow:0 2px 8px rgba(120,80,40,.07);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(120,80,40,.13)}
+.cv{position:relative;aspect-ratio:16/9;background:center/cover;display:flex;align-items:center;justify-content:center;font:60px var(--serif);color:rgba(255,255,255,.92)}
+.star{position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.92);display:grid;place-items:center;border:0;padding:0;color:#C2B3A6}
+.star.on{color:#E2A33B}
+.pills{position:absolute;left:10px;bottom:10px;display:flex;gap:6px;font:600 12px system-ui}
+.pl{padding:1px 9px;border-radius:10px;background:rgba(255,255,255,.92);color:#5B463A}
+.cb{padding:12px 14px 14px;position:relative}
+.nm{font:700 17px var(--serif);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:50px}
+.mt{display:flex;gap:12px;align-items:center;color:var(--dim);font-size:13px}
+.mt span{display:flex;align-items:center;gap:4px}
+.tl{margin-top:4px;font-size:12px;color:var(--teal);min-height:18px}
+.ops{position:absolute;right:10px;bottom:10px;display:flex}
+.wrap{max-width:1040px;margin:0 auto;padding:20px 24px 50px}
+.hero{width:100%;max-height:360px;object-fit:cover;border-radius:16px;margin:14px 0}
+.hero.ph{height:200px;display:flex;align-items:center;justify-content:center;font:90px var(--serif);color:rgba(255,255,255,.9)}
+h1.t{font:700 30px var(--serif);margin:6px 0}
+.two{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start;margin-top:18px}
+.cols{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+.box{background:var(--card);border:1px solid #EFE4D6;border-radius:14px;padding:16px 18px;margin-bottom:16px}
+.box h3{margin:0 0 8px;font:700 16px var(--serif)}
+.hd{font-weight:700;margin:10px 0 2px;color:var(--ac)}
+.ln{white-space:pre-wrap;padding:3px 0}
+.step{display:flex;gap:12px;padding:6px 0}
+.step b{flex:none;width:26px;height:26px;border-radius:50%;background:var(--acbg);color:#B83A1C;display:grid;place-items:center;font-size:13px}
+.fl{display:block;margin:12px 0 3px;font-size:12px;color:var(--dim)}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+#imgbox{border:2px dashed var(--line);border-radius:12px;padding:12px;text-align:center}
+#imgbox img{max-width:100%;max-height:200px;border-radius:8px;display:block;margin:0 auto 8px}
+.tagin{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.fbar{position:sticky;top:64px;z-index:4;background:var(--bg);padding:10px 0}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:8px 16px;border-radius:10px;z-index:20}
+#toast button{margin-left:10px;color:#fff;background:none;border-color:#fff6}
+dialog{border:0;border-radius:16px;background:#fff;color:var(--ink);width:460px;max-width:92vw;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+dialog::backdrop{background:#3B2A2266}
+dialog h2{margin:0 0 10px;font:700 20px var(--serif)}
+.mi{display:block;width:100%;text-align:left;margin:6px 0}
+@media(max-width:900px){.two,.cols{grid-template-columns:1fr}#side{width:200px}}
+</style>
+</head>
+<body>
+<div id="top">
+  <button class="ic" id="sbBtn" title="Toggle filters" style="color:var(--ink)"></button>
+  <div class="logo" id="logo" style="cursor:pointer"><i></i>My Recipes</div>
+  <input id="q" placeholder="Search name, ingredients, tags, category">
+  <span class="sp"></span>
+  <button class="out" id="rollBtn"></button>
+  <button class="pri" id="newBtn"></button>
+  <button class="ic" id="menuBtn" title="More" style="color:var(--ink)"></button>
+</div>
+<div id="home" class="body"><aside id="side"></aside><main id="content"><div class="bar"><b id="info"></b><span class="sp"></span><span class="dim">Sort</span><select id="sort"></select></div><div id="bk"></div><div id="grid"></div></main></div>
+<div id="detail" hidden></div>
+<div id="form" hidden></div>
+<dialog id="dlg"></dialog>
+<div id="toast" hidden></div>
+<input type="file" id="jsonFile" accept=".json" hidden>
+<input type="file" id="xlsFile" accept=".xlsx,.csv" hidden>
+
+<script>
+'use strict';
+/* ===== 1. Config ===== */
+const DIFF = ['简单', '中等', '困难'];                           // stored values (kept for data compatibility)
+const DL = ['Easy', 'Medium', 'Hard'], DPILL = [['#E4EFD9', '#4A7A36'], ['#FBE9C4', '#9A6A10'], ['#F8D9D3', '#A8352B']], DDOT = ['#5E8C4A', '#E2A33B', '#C8423A'];
+const DEF_CATS = ['Breakfast', 'Noodles', 'Stew', 'Quick'];
+const GRAD = [['#F6B58C', '#E8795A'], ['#F5DE96', '#E8B94F'], ['#F2B3B0', '#D9777A'], ['#B7CF9E', '#7FA566'], ['#A9CFD8', '#6FA3B5'], ['#E9CDA8', '#C99A68']];
+const ld = r => r.hist.length ? r.hist[r.hist.length - 1] : 0;
+const SORTS = {
+  new: ['Newest', (a, b) => b.createdAt - a.createdAt], old: ['Oldest', (a, b) => a.createdAt - b.createdAt],
+  time: ['Quickest first', (a, b) => (a.min || 1e9) - (b.min || 1e9)],
+  recent: ['Recently cooked', (a, b) => ld(b) - ld(a)], stale: ['Not cooked longest', (a, b) => ld(a) - ld(b)],
+  name: ['Name A–Z', (a, b) => a.name.localeCompare(b.name)],
+};
+const HEADERS = ['Name', 'Category', 'Difficulty', 'Minutes', 'Servings', 'Tags', 'Source', 'Ingredients', 'Steps', 'Notes'];
+const ICONS = {
+  star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" fill="currentColor"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>', plus: '<path d="M12 5v14M5 12h14"/>',
+  dice: '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><circle cx="12" cy="12" r="1"/>',
+  dots: '<circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>',
+  filter: '<path d="M4 6h16M7 12h10M10 18h4"/>', back: '<path d="m15 6-6 6 6 6"/>',
+};
+const ico = (n, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+
+/* ===== 2. Data layer (all IndexedDB access) ===== */
+const DB = {
+  db: null,
+  open() {
+    return new Promise((ok, no) => {
+      const r = indexedDB.open('recipes-db', 1);
+      r.onupgradeneeded = () => { const d = r.result; ['recipes', 'thumbs', 'fulls'].forEach(n => d.createObjectStore(n, { keyPath: 'id' })); d.createObjectStore('meta'); };
+      r.onsuccess = () => { this.db = r.result; ok(); }; r.onerror = () => no(r.error);
+    });
+  },
+  run(s, mode, fn) { return new Promise((ok, no) => { const t = this.db.transaction(s, mode), r = fn(t.objectStore(s)); t.oncomplete = () => ok(r && r.result); t.onerror = () => no(t.error); }); },
+  all(s) { return this.run(s, 'readonly', o => o.getAll()); }, get(s, k) { return this.run(s, 'readonly', o => o.get(k)); },
+  put(s, v, k) { return this.run(s, 'readwrite', o => o.put(v, k)); }, del(s, k) { return this.run(s, 'readwrite', o => o.delete(k)); },
+};
+
+/* ===== 3. State & helpers ===== */
+let R = [], T = {}, CATS = [], lastExport = 0, undoBuf = null, D = null, draftT, lastRoll = null;
+let F = { q: '', cat: null, diff: null, time: null, tags: [] };
+let sortKey = localStorage.getItem('rc.sort') || 'new';
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const catName = id => (CATS.find(c => c.id === id) || {}).name || '';
+const fmt = t => new Date(t).toLocaleDateString('en-GB');
+const metaLine = r => [r.min && r.min + ' min', r.serv && r.serv + (r.serv === 1 ? ' serving' : ' servings')].filter(Boolean).join(' · ');
+const saveR = r => DB.put('recipes', r);
+const h = (tag, p = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const k in p) { if (k === 'on') for (const n in p.on) e.addEventListener(n, p.on[n]); else if (k === 'html') e.innerHTML = p[k]; else if (k in e) e[k] = p[k]; else e.setAttribute(k, p[k]); }
+  e.append(...kids); return e;
+};
+const btn = (t, fn, cls = '') => h('button', { textContent: t, class: cls, on: { click: fn } });
+const ib = (name, fn, title, cls = 'ic') => h('button', { class: cls, title, html: ico(name, 17), on: { click: e => { e.stopPropagation(); fn(); } } });
+const grad = n => GRAD[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % GRAD.length];
+const cover = (r, cls) => {
+  const el = h('div', { class: cls }); const g = grad(r.name);
+  if (T[r.id]) el.style.backgroundImage = `url(${T[r.id]})`; else { el.style.background = `linear-gradient(135deg,${g[0]},${g[1]})`; el.textContent = [...r.name][0].toUpperCase(); }
+  return el;
+};
+function toast(msg, actText, act) {
+  const t = $('#toast'); t.replaceChildren(msg); t.hidden = false;
+  if (act) t.append(btn(actText, () => { act(); t.hidden = true; }));
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 6000);
+}
+
+/* ===== 4. Filter & sort (pure logic) ===== */
+function visible() {
+  const ws = F.q.toLowerCase().split(/\s+/).filter(Boolean);
+  return R.filter(r => {
+    const hay = (r.name + '\n' + r.ing + '\n' + r.tags.join(' ') + '\n' + catName(r.cat)).toLowerCase();
+    return ws.every(w => hay.includes(w)) && (!F.cat || r.cat === F.cat) && (!F.diff || r.diff === F.diff) && (!F.time || (r.min && r.min <= F.time)) && F.tags.every(t => r.tags.includes(t));
+  }).sort((a, b) => (!!b.star - !!a.star) || SORTS[sortKey][1](a, b));
+}
+const filtering = () => F.q || F.cat || F.diff || F.time || F.tags.length;
+const clearF = () => { F = { q: '', cat: null, diff: null, time: null, tags: [] }; $('#q').value = ''; renderHome(); };
+
+/* ===== 5. Home: sidebar + grid ===== */
+function renderSide() {
+  const tog = (k, v) => () => { F[k] = F[k] === v ? null : v; renderHome(); };
+  const item = (label, n, on, fn, dot) => h('div', { class: 'it' + (on ? ' on' : ''), on: { click: fn } }, ...(dot ? [h('span', { class: 'sw', style: 'background:' + dot })] : []), label, h('span', { class: 'n', textContent: n }));
+  const tags = {}; R.forEach(r => r.tags.forEach(t => tags[t] = (tags[t] || 0) + 1));
+  $('#side').replaceChildren(
+    h('div', { class: 'grp', textContent: 'Category', style: 'margin-top:0' }),
+    item('All', R.length, !F.cat, () => { F.cat = null; renderHome(); }),
+    ...CATS.map(c => item(c.name, R.filter(r => r.cat === c.id).length, F.cat === c.id, tog('cat', c.id))),
+    h('div', { class: 'grp', textContent: 'Difficulty' }),
+    ...DIFF.map((d, i) => item(DL[i], R.filter(r => r.diff === d).length, F.diff === d, tog('diff', d), DDOT[i])),
+    h('div', { class: 'grp', textContent: 'Time' }),
+    item('Within 30 min', R.filter(r => r.min && r.min <= 30).length, F.time === 30, tog('time', 30)),
+    item('Within 1 hour', R.filter(r => r.min && r.min <= 60).length, F.time === 60, tog('time', 60)),
+    ...(Object.keys(tags).length ? [h('div', { class: 'grp', textContent: 'Tags' }), h('div', { class: 'tags' }, ...Object.keys(tags).sort().map(t =>
+      h('button', { class: 'tg' + (F.tags.includes(t) ? ' on' : ''), textContent: '#' + t, on: { click: () => { F.tags = F.tags.includes(t) ? F.tags.filter(x => x !== t) : [...F.tags, t]; renderHome(); } } })))] : []),
+    ...(filtering() ? [h('div', { style: 'margin-top:18px' }, btn('Clear filters', clearF))] : []));
+}
+function card(r) {
+  const cv = cover(r, 'cv'), c = catName(r.cat), m = metaLine(r);
+  cv.append(h('button', { class: 'star' + (r.star ? ' on' : ''), title: 'Favorite', html: ico('star', 16), on: { click: e => { e.stopPropagation(); r.star = !r.star; saveR(r); renderHome(); } } }),
+    h('div', { class: 'pills' },
+      ...(r.diff ? [h('span', { class: 'pl', style: `background:${DPILL[DIFF.indexOf(r.diff)][0]};color:${DPILL[DIFF.indexOf(r.diff)][1]}`, textContent: DL[DIFF.indexOf(r.diff)] })] : []),
+      ...(c ? [h('span', { class: 'pl', textContent: c })] : [])));
+  return h('div', { class: 'card', on: { click: () => location.hash = '#r/' + r.id } }, cv,
+    h('div', { class: 'cb' }, h('div', { class: 'nm', textContent: r.name }),
+      h('div', { class: 'mt' }, ...(m ? [h('span', { html: ico('clock', 14) + m })] : [])),
+      h('div', { class: 'tl', textContent: r.tags.slice(0, 4).map(t => '#' + t).join(' ') }),
+      h('div', { class: 'ops' }, ib('edit', () => location.hash = '#e/' + r.id, 'Edit'), ib('trash', () => remove(r), 'Delete'))));
+}
+function renderHome() {
+  renderSide();
+  const list = visible(), g = $('#grid'), old = R.length && (!lastExport || Date.now() - lastExport > 30 * 864e5);
+  $('#info').textContent = R.length ? `${list.length} ${list.length === 1 ? 'recipe' : 'recipes'}` : '';
+  $('#bk').replaceChildren(...(old ? [h('div', { class: 'box row', style: 'padding:8px 14px;margin-bottom:14px' }, h('span', { class: 'dim sp', textContent: 'Tip: export a backup file now and then — data lives only in this browser.' }), btn('Export backup', () => exportJSON(true)))] : []));
+  g.replaceChildren();
+  if (!R.length) { g.className = 'empty'; g.append(h('p', { textContent: 'No recipes yet' }), h('div', { class: 'row', style: 'justify-content:center' }, btn('New recipe', () => location.hash = '#new', 'pri'), btn('Batch import', batchDlg))); return; }
+  if (!list.length) { g.className = 'empty'; g.append(h('p', { textContent: 'No recipes match your filters' }), btn('Clear filters', clearF)); return; }
+  g.className = 'grid'; list.forEach(r => g.append(card(r)));
+}
+
+/* ===== 6. Delete with undo ===== */
+async function remove(r) {
+  if (!confirm(`Delete "${r.name}"?`)) return;
+  undoBuf = { r, th: T[r.id], full: await DB.get('fulls', r.id) };
+  R = R.filter(x => x !== r); delete T[r.id];
+  await Promise.all([DB.del('recipes', r.id), DB.del('thumbs', r.id), DB.del('fulls', r.id)]);
+  if (location.hash) location.hash = ''; else renderHome();
+  toast('Recipe deleted', 'Undo', async () => {
+    const u = undoBuf; R.push(u.r); await saveR(u.r);
+    if (u.th) { T[u.r.id] = u.th; await DB.put('thumbs', { id: u.r.id, d: u.th }); }
+    if (u.full) await DB.put('fulls', u.full); renderHome();
+  });
+}
+
+/* ===== 7. Detail page ===== */
+function lines(text, num) {
+  const box = h('div'); let n = 0;
+  text.split('\n').map(s => s.trim()).filter(Boolean).forEach(s => {
+    if (s[0] === '#') { n = 0; box.append(h('div', { class: 'hd', textContent: s.replace(/^#+\s*/, '') })); }
+    else if (num) box.append(h('div', { class: 'step' }, h('b', { textContent: ++n }), h('span', { textContent: s })));
+    else box.append(h('div', { class: 'ln', textContent: '• ' + s }));
+  });
+  return box;
+}
+async function showDetail(id) {
+  const r = R.find(x => x.id === id), d = $('#detail'); if (!r) { location.hash = ''; return; }
+  const full = await DB.get('fulls', id), n = r.hist.length, c = catName(r.cat), box = (t, v) => v ? [h('div', { class: 'box' }, h('h3', { textContent: t }), v)] : [];
+  const hero = full ? h('img', { class: 'hero', src: full.d }) : cover(r, 'hero ph');
+  d.replaceChildren(h('div', { class: 'wrap' },
+    h('div', { class: 'row' }, btn('← Back', () => location.hash = ''), h('span', { class: 'sp' }),
+      btn(r.star ? '★ Favorited' : '☆ Favorite', () => { r.star = !r.star; saveR(r); showDetail(id); }), btn('Edit', () => location.hash = '#e/' + id), btn('Delete', () => remove(r))),
+    hero, h('h1', { class: 't', textContent: r.name }),
+    h('div', { class: 'dim', textContent: [metaLine(r), r.diff && DL[DIFF.indexOf(r.diff)], c, ...r.tags.map(t => '#' + t)].filter(Boolean).join('  ·  ') }),
+    h('div', { class: 'row', style: 'margin:14px 0' }, btn('Cooked it ✓', () => { r.hist.push(Date.now()); saveR(r); showDetail(id); }, 'pri'),
+      h('span', { class: 'dim', textContent: n ? `Cooked ${n} ${n === 1 ? 'time' : 'times'} · last on ${fmt(ld(r))}` : 'Not cooked yet' }),
+      ...(n ? [btn('Undo', () => { r.hist.pop(); saveR(r); showDetail(id); })] : [])),
+    h('div', { class: 'two' }, h('div', {}, ...box('Ingredients', r.ing.trim() && lines(r.ing, false))),
+      h('div', {}, ...box('Steps', r.steps.trim() && lines(r.steps, true)), ...box('Notes', r.note.trim() && h('div', { class: 'ln', textContent: r.note })),
+        ...box('Source', /^https?:/.test(r.src) && h('a', { href: r.src, target: '_blank', rel: 'noreferrer noopener', textContent: r.src }))))));
+}
+
+/* ===== 8. Image compression (stores 1280px full + 480px thumbnail) ===== */
+function shrink(file, max) {
+  return new Promise(ok => {
+    const i = new Image(), u = URL.createObjectURL(file);
+    i.onload = () => { const k = Math.min(1, max / Math.max(i.width, i.height)), c = document.createElement('canvas'); c.width = i.width * k; c.height = i.height * k; c.getContext('2d').drawImage(i, 0, 0, c.width, c.height); URL.revokeObjectURL(u); ok(c.toDataURL('image/jpeg', .8)); };
+    i.src = u;
+  });
+}
+async function setImg(file) { if (!file || !file.type.startsWith('image/')) return; D.img = { thumb: await shrink(file, 480), full: await shrink(file, 1280) }; D.imgChanged = true; draft(); drawImg(); }
+function drawImg() {
+  const b = $('#imgbox'); if (!b) return;
+  b.replaceChildren(...(D.img ? [h('img', { src: D.img.full || D.img.thumb })] : []), h('div', { class: 'dim', textContent: 'Drop an image here, paste with Ctrl+V, or' }),
+    h('div', { class: 'row', style: 'justify-content:center;margin-top:6px' }, btn('Choose image', () => { const i = h('input', { type: 'file', accept: 'image/*' }); i.onchange = () => setImg(i.files[0]); i.click(); }),
+      ...(D.img ? [btn('Remove', () => { D.img = null; D.imgChanged = true; draft(); drawImg(); })] : [])));
+}
+
+/* ===== 9. Edit form (with draft autosave) ===== */
+const blank = () => ({ id: null, name: '', min: '', serv: '', diff: '', cat: '', tags: [], ing: '', steps: '', note: '', src: '', img: null, imgChanged: false });
+function draft() { clearTimeout(draftT); draftT = setTimeout(() => DB.put('meta', { for: D.id || 'new', D }, 'draft'), 400); }
+async function openForm(id) {
+  const key = id || 'new', r = id && R.find(x => x.id === id); if (id && !r) { location.hash = ''; return; }
+  const dr = await DB.get('meta', 'draft'); let restored = false;
+  if (dr && dr.for === key) { D = dr.D; restored = true; }
+  else if (r) { const f = await DB.get('fulls', id); D = { ...blank(), ...r, id, img: f ? { thumb: T[id], full: f.d } : null }; } else D = blank();
+  const bind = (k, el) => { el.value = D[k] ?? ''; el.addEventListener('input', () => { D[k] = el.value; draft(); }); return el; };
+  const fld = (label, el) => h('label', {}, h('span', { class: 'fl', textContent: label }), el);
+  const cat = h('select', {}, h('option', { value: '', textContent: 'Uncategorized' }), ...CATS.map(c => h('option', { value: c.id, textContent: c.name })));
+  const diff = h('select', {}, h('option', { value: '', textContent: 'Not set' }), ...DIFF.map((x, i) => h('option', { value: x, textContent: DL[i] })));
+  const tagBox = h('div', { class: 'tagin' }), tagIn = h('input', { placeholder: 'Type a tag, press Enter' });
+  const drawTags = () => {
+    const all = [...new Set(R.flatMap(x => x.tags))].filter(t => !D.tags.includes(t));
+    tagBox.replaceChildren(...D.tags.map(t => h('button', { class: 'tg on', textContent: '#' + t + ' ×', on: { click: () => { D.tags = D.tags.filter(x => x !== t); draft(); drawTags(); } } })),
+      ...all.map(t => h('button', { class: 'tg', textContent: '+ ' + t, on: { click: () => { D.tags.push(t); draft(); drawTags(); } } })));
+  };
+  tagIn.addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ',') return; e.preventDefault(); const t = tagIn.value.trim().replace(/^#/, ''); if (t && !D.tags.includes(t)) D.tags.push(t); tagIn.value = ''; draft(); drawTags(); });
+  const sec = (t, ...k) => h('div', { class: 'box' }, h('h3', { textContent: t }), ...k);
+  $('#form').replaceChildren(h('div', { class: 'wrap' },
+    h('div', { class: 'fbar row' }, h('b', { textContent: r ? 'Edit recipe' : 'New recipe', style: 'font:700 22px var(--serif)' }), h('span', { class: 'sp' }),
+      ...(restored ? [h('span', { class: 'dim', textContent: 'Draft restored' }), btn('Discard draft', async () => { await DB.del('meta', 'draft'); openForm(id); })] : []),
+      btn('Cancel', async () => { await DB.del('meta', 'draft'); history.back(); }), btn('Save', save, 'pri')),
+    h('div', { class: 'cols' },
+      h('div', {}, sec('Basics', fld('Name (required)', bind('name', h('input'))),
+        h('div', { class: 'g3' }, fld('Minutes', bind('min', h('input', { type: 'number', min: 0 }))), fld('Servings', bind('serv', h('input', { type: 'number', min: 0 }))), fld('Difficulty', bind('diff', diff))),
+        h('div', { class: 'row', style: 'align-items:flex-end' }, h('div', { class: 'sp' }, fld('Category', bind('cat', cat))), btn('Manage', () => manageCats(() => openForm(id))))),
+        sec('Ingredients', h('div', { class: 'dim', textContent: 'One per line. A line starting with # is a heading (e.g. # Sauce).' }), bind('ing', h('textarea'))),
+        sec('Steps', h('div', { class: 'dim', textContent: 'One step per line.' }), bind('steps', h('textarea')))),
+      h('div', {}, sec('Cover image', h('div', { id: 'imgbox' })), sec('Tags', tagIn, tagBox),
+        sec('Notes & source', fld('Tips', bind('note', h('textarea', { style: 'min-height:70px' }))), fld('Source link', bind('src', h('input', { placeholder: 'https://' }))))))));
+  drawTags(); drawImg();
+}
+async function save() {
+  const name = D.name.trim(); if (!name) { alert('Please enter a recipe name'); return; }
+  const now = Date.now(), old = D.id && R.find(x => x.id === D.id), id = D.id || uid();
+  const r = { id, name, createdAt: old ? old.createdAt : now, updatedAt: now, min: +D.min || 0, serv: +D.serv || 0, diff: D.diff, cat: D.cat, tags: D.tags, star: old ? old.star : false, hist: old ? old.hist : [], ing: D.ing, steps: D.steps, note: D.note, src: D.src.trim() };
+  await saveR(r);
+  if (D.imgChanged) {
+    if (D.img) { T[id] = D.img.thumb; await DB.put('thumbs', { id, d: D.img.thumb }); await DB.put('fulls', { id, d: D.img.full }); }
+    else { delete T[id]; await DB.del('thumbs', id); await DB.del('fulls', id); }
+  }
+  old ? Object.assign(old, r) : R.push(r);
+  clearTimeout(draftT); await DB.del('meta', 'draft'); location.hash = '#r/' + id;
+}
+
+/* ===== 10. Dialogs: menu, categories, roll ===== */
+function dialog(...kids) { const d = $('#dlg'); d.onclose = null; d.replaceChildren(...kids); if (!d.open) d.showModal(); return d; }
+const closeBtn = () => btn('Close', () => $('#dlg').close());
+function menu() {
+  dialog(h('h2', { textContent: 'More' }),
+    ...[['Batch import (Excel / CSV)', batchDlg], ['Export backup (with images)', () => exportJSON(true)], ['Export backup (no images)', () => exportJSON(false)],
+      ['Import backup (JSON)', () => $('#jsonFile').click()], ['Manage categories', manageCats]].map(([t, f]) => h('button', { class: 'mi', textContent: t, on: { click: () => { $('#dlg').close(); f(); } } })),
+    h('div', { class: 'dim', style: 'margin:10px 0', textContent: lastExport ? 'Last export: ' + fmt(lastExport) : 'Never exported' }), closeBtn());
+}
+function manageCats(after) {
+  const saveC = () => DB.put('meta', CATS, 'cats');
+  const draw = () => {
+    const d = dialog(h('h2', { textContent: 'Categories' }),
+      ...CATS.map(c => h('div', { class: 'row', style: 'margin:6px 0' }, h('span', { class: 'sp', textContent: c.name }),
+        btn('Rename', async () => { const n = prompt('New name', c.name); if (n && n.trim()) { c.name = n.trim(); await saveC(); draw(); } }),
+        btn('Delete', async () => { if (!confirm(`Delete "${c.name}"? Its recipes become uncategorized.`)) return; CATS = CATS.filter(x => x !== c); for (const r of R) if (r.cat === c.id) { r.cat = ''; await saveR(r); } await saveC(); draw(); }))),
+      h('div', { class: 'row', style: 'margin-top:10px' }, h('input', { id: 'newcat', placeholder: 'New category' }), btn('Add', async () => { const n = $('#newcat').value.trim(); if (n) { CATS.push({ id: uid(), name: n }); await saveC(); draw(); } })),
+      h('div', { class: 'row', style: 'margin-top:12px' }, h('span', { class: 'sp' }), closeBtn()));
+    d.onclose = () => { renderHome(); if (typeof after === 'function') after(); };
+  };
+  draw();
+}
+function roll() {
+  const pool = visible(); if (!pool.length) { toast('No recipes to pick from'); return; }
+  const pick = pool.length > 1 ? pool.filter(r => r.id !== lastRoll) : pool, r = pick[Math.floor(Math.random() * pick.length)]; lastRoll = r.id;
+  dialog(h('h2', { textContent: 'What to eat today?' }), cover(r, 'cv'), h('h3', { textContent: r.name, style: 'font:700 22px var(--serif);margin:12px 0 2px' }),
+    h('div', { class: 'dim', textContent: [metaLine(r), r.diff && DL[DIFF.indexOf(r.diff)]].filter(Boolean).join(' · ') + (filtering() ? '  (picked from current filters)' : '') }),
+    h('div', { class: 'row', style: 'margin-top:14px' }, btn('Roll again', roll), btn("Let's cook this", () => { $('#dlg').close(); location.hash = '#r/' + r.id; }, 'pri'), closeBtn()));
+}
+
+/* ===== 11. JSON backup ===== */
+function download(blob, name) { const a = h('a', { href: URL.createObjectURL(blob), download: name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); }
+async function exportJSON(withImg) {
+  const o = { v: 1, cats: CATS, recipes: R };
+  if (withImg) { o.thumbs = T; o.fulls = {}; (await DB.all('fulls')).forEach(x => o.fulls[x.id] = x.d); }
+  download(new Blob([JSON.stringify(o)], { type: 'application/json' }), 'recipes-' + new Date().toISOString().slice(0, 10) + '.json');
+  lastExport = Date.now(); await DB.put('meta', lastExport, 'lastExport'); renderHome();
+}
+async function importJSON(file) {
+  try {
+    const d = JSON.parse(await file.text()); if (!Array.isArray(d.recipes)) throw 0;
+    (d.cats || []).forEach(c => { if (!CATS.some(x => x.id === c.id)) CATS.push(c); }); await DB.put('meta', CATS, 'cats'); let n = 0;
+    for (const r of d.recipes) {
+      const cur = R.find(x => x.id === r.id); if (cur && cur.updatedAt >= r.updatedAt) continue;
+      r.hist = r.hist || []; r.tags = r.tags || []; await saveR(r);
+      if (d.thumbs && d.thumbs[r.id]) { T[r.id] = d.thumbs[r.id]; await DB.put('thumbs', { id: r.id, d: T[r.id] }); }
+      if (d.fulls && d.fulls[r.id]) await DB.put('fulls', { id: r.id, d: d.fulls[r.id] });
+      cur ? Object.assign(cur, r) : R.push(r); n++;
+    }
+    toast(`Imported ${n} recipes`); renderHome();
+  } catch (e) { alert('That file is not a valid backup'); }
+}
+
+/* ===== 12. Excel (.xlsx) writer / reader — no libraries ===== */
+const CRC = (() => { const t = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u => { let c = ~0; for (const b of u) c = CRC[(c ^ b) & 255] ^ (c >>> 8); return ~c >>> 0; };
+function zip(files) {                                   // stored (uncompressed) zip
+  const enc = new TextEncoder(), parts = [], cd = []; let off = 0;
+  for (const [name, txt] of files) {
+    const nm = enc.encode(name), d = enc.encode(txt), c = crc32(d);
+    const l = new DataView(new ArrayBuffer(30)); l.setUint32(0, 0x04034b50, true); l.setUint16(4, 20, true); l.setUint16(6, 0x0800, true); l.setUint16(12, 0x21, true); l.setUint32(14, c, true); l.setUint32(18, d.length, true); l.setUint32(22, d.length, true); l.setUint16(26, nm.length, true);
+    const k = new DataView(new ArrayBuffer(46)); k.setUint32(0, 0x02014b50, true); k.setUint16(4, 20, true); k.setUint16(6, 20, true); k.setUint16(8, 0x0800, true); k.setUint16(14, 0x21, true); k.setUint32(16, c, true); k.setUint32(20, d.length, true); k.setUint32(24, d.length, true); k.setUint16(28, nm.length, true); k.setUint32(42, off, true);
+    parts.push(new Uint8Array(l.buffer), nm, d); cd.push(new Uint8Array(k.buffer), nm); off += 30 + nm.length + d.length;
+  }
+  const e = new DataView(new ArrayBuffer(22)); e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cd.reduce((a, b) => a + b.length, 0), true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...cd, new Uint8Array(e.buffer)]);
+}
+function makeXlsx(rows) {
+  const esc = s => String(s).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m])), X = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const NS = 'http://schemas.openxmlformats.org/', M = NS + 'spreadsheetml/2006/main', RL = NS + 'officeDocument/2006/relationships';
+  const sheet = `${X}<worksheet xmlns="${M}"><cols><col min="1" max="10" width="24" customWidth="1"/></cols><sheetData>${rows.map((r, i) => `<row r="${i + 1}">${r.map((v, j) => `<c r="${String.fromCharCode(65 + j)}${i + 1}" t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`).join('')}</row>`).join('')}</sheetData></worksheet>`;
+  return zip([
+    ['[Content_Types].xml', `${X}<Types xmlns="${NS}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`],
+    ['_rels/.rels', `${X}<Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${RL}/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+    ['xl/workbook.xml', `${X}<workbook xmlns="${M}" xmlns:r="${RL}"><sheets><sheet name="Recipes" sheetId="1" r:id="rId1"/></sheets></workbook>`],
+    ['xl/_rels/workbook.xml.rels', `${X}<Relationships xmlns="${NS}package/2006/relationships"><Relationship Id="rId1" Type="${RL}/worksheet" Target="worksheets/sheet1.xml"/></Relationships>`],
+    ['xl/worksheets/sheet1.xml', sheet]]);
+}
+async function readXlsx(buf) {
+  const u = new Uint8Array(buf), v = new DataView(buf), dec = new TextDecoder(); let e = u.length - 22;
+  while (e >= 0 && v.getUint32(e, true) !== 0x06054b50) e--;
+  const n = v.getUint16(e + 10, true); let p = v.getUint32(e + 16, true); const files = {};
+  for (let i = 0; i < n; i++) {
+    const m = v.getUint16(p + 10, true), cs = v.getUint32(p + 20, true), nl = v.getUint16(p + 28, true), xl = v.getUint16(p + 30, true), cl = v.getUint16(p + 32, true), lo = v.getUint32(p + 42, true);
+    const name = dec.decode(u.subarray(p + 46, p + 46 + nl)); p += 46 + nl + xl + cl;
+    if (!/^xl\/(sharedStrings|worksheets\/sheet\d+)\.xml$/.test(name)) continue;
+    const ds = lo + 30 + v.getUint16(lo + 26, true) + v.getUint16(lo + 28, true), raw = u.subarray(ds, ds + cs);
+    files[name] = m === 0 ? dec.decode(raw) : dec.decode(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+  }
+  const P = s => new DOMParser().parseFromString(s, 'application/xml');
+  const ss = files['xl/sharedStrings.xml'] ? [...P(files['xl/sharedStrings.xml']).querySelectorAll('si')].map(x => x.textContent) : [];
+  const sn = Object.keys(files).filter(k => k.includes('worksheets')).sort()[0], rows = [];
+  P(files[sn]).querySelectorAll('c').forEach(c => {
+    const m = /^([A-Z]+)(\d+)$/.exec(c.getAttribute('r')); if (!m) return;
+    const ci = [...m[1]].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1, ri = +m[2] - 1, t = c.getAttribute('t'), vv = c.querySelector('v');
+    (rows[ri] = rows[ri] || [])[ci] = t === 's' ? ss[+vv.textContent] : t === 'inlineStr' ? c.textContent : vv ? vv.textContent : '';
+  });
+  return Array.from(rows, r => r || []);
+}
+function parseCSV(t) {
+  t = t.replace(/^\uFEFF/, ''); const first = t.split('\n')[0], sep = (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ';' : ',';
+  const rows = []; let r = [], f = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) { if (c === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true; else if (c === sep) { r.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; r.push(f); rows.push(r); r = []; f = ''; } else f += c;
+  }
+  if (f || r.length) { r.push(f); rows.push(r); } return rows;
+}
+
+/* ===== 13. Batch import dialog ===== */
+const DMAP = { easy: '简单', medium: '中等', hard: '困难', 简单: '简单', 中等: '中等', 困难: '困难' };
+function plan(rows) {                                    // rows -> {items, warnings}; nothing is saved here
+  const head = (rows[0] || []).map(x => String(x ?? '').trim().toLowerCase()), g = (r, k) => { const i = head.indexOf(k); return i < 0 ? '' : String(r[i] ?? '').trim(); };
+  const items = [], seen = new Set(R.map(r => r.name.toLowerCase())), warn = [];
+  rows.slice(1).forEach((r, i) => {
+    if (!r.some(x => String(x ?? '').trim())) return;
+    const name = g(r, 'name'); if (!name) { warn.push(`Row ${i + 2}: no name, skipped`); return; }
+    const dif = g(r, 'difficulty'), d = DMAP[dif.toLowerCase()] || ''; if (dif && !d) warn.push(`"${name}": difficulty "${dif}" not recognized, left empty`);
+    const dup = seen.has(name.toLowerCase()); seen.add(name.toLowerCase());
+    items.push({ name, dup, cat: g(r, 'category'), diff: d, min: parseInt(g(r, 'minutes')) || 0, serv: parseInt(g(r, 'servings')) || 0, tags: g(r, 'tags').split(/[,;，、]/).map(s => s.trim().replace(/^#/, '')).filter(Boolean),
+      src: g(r, 'source'), ing: g(r, 'ingredients'), steps: g(r, 'steps').split('\n').map(s => s.replace(/^\s*\d+[.)、]\s*/, '')).join('\n'), note: g(r, 'notes') });
+  });
+  return { items, warn };
+}
+function batchDlg() {
+  dialog(h('h2', { textContent: 'Batch import' }),
+    h('p', { class: 'dim', textContent: '1. Download the Excel template and fill one recipe per row. 2. Choose the file. You will see a preview before anything is saved.' }),
+    h('div', { class: 'row' }, btn('Download template (.xlsx)', () => download(makeXlsx([HEADERS,
+      ['Tomato & Egg Stir-fry', 'Quick', 'Easy', 15, 2, 'rice dish, low-fat', 'https://example.com', '# Main\n2 tomatoes\n3 eggs\n# Seasoning\nSalt', '1. Cut tomatoes, beat eggs\n2. Scramble eggs, set aside\n3. Fry tomatoes, add eggs back', 'Blanch tomatoes for easy peeling'],
+      ['Scallion Oil Noodles', 'Noodles', 'Medium', 25, 2, 'noodles', '', 'Noodles 200 g\nScallions 1 bunch', 'Boil noodles\nFry scallions in oil\nToss together', '']]), 'recipe-template.xlsx'), 'out'),
+      btn('Choose file (.xlsx / .csv)', () => $('#xlsFile').click(), 'pri')), h('div', { class: 'row', style: 'margin-top:14px' }, h('span', { class: 'sp' }), closeBtn()));
+}
+async function batchFile(file) {
+  try {
+    const rows = /\.csv$/i.test(file.name) ? parseCSV(await file.text()) : await readXlsx(await file.arrayBuffer()), { items, warn } = plan(rows);
+    if (!items.length) { alert('No recipes found. Please use the template columns.'); return; }
+    const dups = items.filter(x => x.dup).length, chk = h('input', { type: 'checkbox', style: 'width:auto' }), go = async () => {
+      let n = 0, now = Date.now();
+      for (const it of items) {
+        if (it.dup && !chk.checked) continue;
+        let cat = ''; if (it.cat) { let c = CATS.find(x => x.name.toLowerCase() === it.cat.toLowerCase()); if (!c) { c = { id: uid(), name: it.cat }; CATS.push(c); } cat = c.id; }
+        const r = { id: uid(), name: it.name, createdAt: now + n, updatedAt: now + n, min: it.min, serv: it.serv, diff: it.diff, cat, tags: it.tags, star: false, hist: [], ing: it.ing, steps: it.steps, note: it.note, src: it.src };
+        await saveR(r); R.push(r); n++;
+      }
+      await DB.put('meta', CATS, 'cats'); $('#dlg').close(); toast(`Imported ${n} recipes`); renderHome();
+    };
+    dialog(h('h2', { textContent: 'Preview' }), h('div', { textContent: `${items.length} recipes found${dups ? `, ${dups} already exist (same name)` : ''}.` }),
+      h('ul', {}, ...items.slice(0, 8).map(x => h('li', { textContent: x.name + (x.cat ? ' · ' + x.cat : '') + (x.dup ? ' (duplicate)' : '') })), ...(items.length > 8 ? [h('li', { class: 'dim', textContent: `…and ${items.length - 8} more` })] : [])),
+      ...warn.slice(0, 5).map(w => h('div', { class: 'dim', textContent: '⚠ ' + w })),
+      ...(dups ? [h('label', { class: 'row', style: 'margin:8px 0' }, chk, 'Import duplicates too (default: skip)')] : []),
+      h('div', { class: 'row', style: 'margin-top:12px' }, h('span', { class: 'sp' }), closeBtn(), btn(`Import`, go, 'pri')));
+  } catch (e) { alert('Could not read that file. Please use the downloaded template (.xlsx) or a .csv.'); }
+}
+
+/* ===== 14. Routing & boot ===== */
+function route() {
+  const [v, id] = location.hash.slice(1).split('/');
+  $('#home').hidden = !!v; $('#detail').hidden = v !== 'r'; $('#form').hidden = !(v === 'new' || v === 'e');
+  $('#sbBtn').hidden = !!v;
+  if (v === 'r') showDetail(id); else if (v === 'new') openForm(null); else if (v === 'e') openForm(id); else renderHome();
+  scrollTo(0, 0);
+}
+(async () => {
+  await DB.open();
+  R = await DB.all('recipes'); R.forEach(r => { r.hist = r.hist || []; r.tags = r.tags || []; });
+  (await DB.all('thumbs')).forEach(x => T[x.id] = x.d);
+  CATS = await DB.get('meta', 'cats'); lastExport = (await DB.get('meta', 'lastExport')) || 0;
+  if (!CATS) { CATS = DEF_CATS.map(name => ({ id: uid(), name })); await DB.put('meta', CATS, 'cats'); }
+  $('#sbBtn').innerHTML = ico('filter'); $('#rollBtn').innerHTML = ico('dice', 16) + ' What to eat today?'; $('#newBtn').innerHTML = ico('plus', 16) + ' New'; $('#menuBtn').innerHTML = ico('dots');
+  document.body.classList.toggle('nosb', localStorage.getItem('rc.nosb') === '1');
+  $('#sbBtn').onclick = () => { const o = document.body.classList.toggle('nosb'); localStorage.setItem('rc.nosb', o ? '1' : '0'); };
+  $('#sort').replaceChildren(...Object.entries(SORTS).map(([k, v]) => h('option', { value: k, textContent: v[0], selected: k === sortKey })));
+  $('#sort').onchange = e => { sortKey = e.target.value; localStorage.setItem('rc.sort', sortKey); renderHome(); };
+  $('#q').oninput = e => { F.q = e.target.value; if (location.hash) location.hash = ''; else renderHome(); };
+  $('#logo').onclick = () => location.hash = '';
+  $('#newBtn').onclick = () => location.hash = '#new'; $('#rollBtn').onclick = roll; $('#menuBtn').onclick = menu;
+  $('#jsonFile').onchange = e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; };
+  $('#xlsFile').onchange = e => { if (e.target.files[0]) batchFile(e.target.files[0]); e.target.value = ''; };
+  document.addEventListener('paste', e => { if (D && !$('#form').hidden) for (const it of e.clipboardData.items) if (it.type.startsWith('image/')) setImg(it.getAsFile()); });
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => { if (!$('#form').hidden) { e.preventDefault(); setImg(e.dataTransfer.files[0]); } });
+  addEventListener('hashchange', route);
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  route();
+})();
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>My Recipes</title>
 <style>
 :root{--bg:#FBF6EE;--card:#fff;--ink:#3B2A22;--dim:#8C7B70;--line:#EADFD2;--ac:#D9502F;--acbg:#FBE3DA;--teal:#3E7C8C;--serif:"Songti SC","Noto Serif SC",Georgia,serif}
@@ -78,10 +78,59 @@ dialog{border:0;border-radius:16px;background:#fff;color:var(--ink);width:460px;
 dialog::backdrop{background:#3B2A2266}
 dialog h2{margin:0 0 10px;font:700 20px var(--serif)}
 .mi{display:block;width:100%;text-align:left;margin:6px 0}
+body.ro #newBtn,body.ro #menuBtn,body.ro .ops,body.ro #bk,body.ro #grid.empty .row,body.ro .star:not(.on){display:none!important}
+body.ro .star{pointer-events:none}
 @media(max-width:900px){.two,.cols{grid-template-columns:1fr}#side{width:200px}}
+
+/* ===== Mobile (<=640px CSS px) ===== */
+.mdone,#scrim{display:none}
+#syncst:empty{display:none}
+@media(hover:none){.card:hover{transform:none;box-shadow:0 2px 8px rgba(120,80,40,.07)}}
+@media(max-width:640px){
+  html{-webkit-text-size-adjust:100%} *{-webkit-tap-highlight-color:transparent}
+  body{font-size:15px}
+  input,select,textarea{font-size:16px}                         /* 16px stops iOS Safari zooming in on focus */
+  #top{height:auto;flex-wrap:wrap;gap:6px 8px;padding:calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px calc(12px + env(safe-area-inset-left))}
+  #sbBtn{order:1} .logo{order:2;font-size:16px} #top .sp{order:3}
+  #rollBtn{order:4} #newBtn{order:5} #menuBtn{order:6}
+  #rollBtn,#newBtn{font-size:0;min-width:40px;height:40px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center}
+  #menuBtn,#sbBtn{min-width:40px;height:40px;justify-content:center}
+  #q{order:7;flex:1 0 100%;max-width:none;height:40px}
+  #syncst{order:8;flex:1 0 100%;font-size:11px}
+  body[data-v="r"] #top,body[data-v="new"] #top,body[data-v="e"] #top{display:none}
+  /* filters become a left drawer */
+  .body{display:block;min-height:0}
+  body.nosb #side{display:block}
+  #side{position:fixed;left:0;top:0;bottom:0;z-index:30;width:84vw;max-width:340px;max-height:none;background:#FFFDF9;padding:calc(16px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));transform:translateX(-105%);transition:transform .2s;box-shadow:6px 0 24px rgba(0,0,0,.15);overflow:auto}
+  body.sbopen #side{transform:none}
+  #scrim{position:fixed;inset:0;z-index:29;background:#3B2A2266}
+  body.sbopen #scrim{display:block}
+  .mdone{display:block;width:100%;height:44px;margin-bottom:6px}
+  .it{height:44px}
+  #content{padding:12px calc(12px + env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left))}
+  .bar{margin-bottom:12px} #bk .row{flex-wrap:wrap}
+  /* cards: two per row (360–440px wide screens) */
+  #grid.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .cv{font-size:38px} .pills{left:6px;bottom:6px;font-size:11px;gap:4px} .pl{padding:0 7px}
+  .star{width:34px;height:34px;top:6px;right:6px}
+  .cb{padding:8px 10px 38px} .nm{font-size:15px;padding-right:0} .mt{font-size:12px} .tl{font-size:11px}
+  .ops{right:0;bottom:0} .ops .ic{padding:10px}
+  /* detail + form pages are full screen */
+  .wrap{padding:calc(12px + env(safe-area-inset-top)) calc(14px + env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left))}
+  .wrap>.row{flex-wrap:wrap} .wrap button{min-height:40px}
+  .hero{max-height:230px;border-radius:12px} .hero.ph{height:150px;font-size:64px} h1.t{font-size:24px}
+  .two,.cols{grid-template-columns:1fr} .g3{grid-template-columns:1fr 1fr}
+  .fbar{top:0;padding-top:calc(8px + env(safe-area-inset-top));flex-wrap:wrap}
+  .box{padding:14px}
+  /* dialogs become bottom sheets */
+  dialog{width:100%;max-width:100%;margin:auto 0 0;border-radius:18px 18px 0 0;max-height:92vh;overflow:auto;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+  dialog button{min-height:40px}
+  #toast{bottom:calc(16px + env(safe-area-inset-bottom));max-width:92vw}
+}
 </style>
 </head>
 <body>
+<div id="scrim"></div>
 <div id="top">
   <button class="ic" id="sbBtn" title="Toggle filters" style="color:var(--ink)"></button>
   <div class="logo" id="logo" style="cursor:pointer"><i></i>My Recipes</div>
@@ -187,6 +236,7 @@ function renderSide() {
   const item = (label, n, on, fn, dot) => h('div', { class: 'it' + (on ? ' on' : ''), on: { click: fn } }, ...(dot ? [h('span', { class: 'sw', style: 'background:' + dot })] : []), label, h('span', { class: 'n', textContent: n }));
   const tags = {}; R.forEach(r => r.tags.forEach(t => tags[t] = (tags[t] || 0) + 1));
   $('#side').replaceChildren(
+    h('button', { class: 'mdone pri', textContent: 'Show results', on: { click: () => document.body.classList.remove('sbopen') } }),
     h('div', { class: 'grp', textContent: 'Category', style: 'margin-top:0' }),
     item('All', R.length, !F.cat, () => { F.cat = null; renderHome(); }),
     ...CATS.map(c => item(c.name, R.filter(r => r.cat === c.id).length, F.cat === c.id, tog('cat', c.id))),
@@ -246,9 +296,9 @@ function lines(text, num) {
   });
   return box;
 }
-async function showDetail(id) {
+async function showDetail0(id) {
   const r = R.find(x => x.id === id), d = $('#detail'); if (!r) { location.hash = ''; return; }
-  const full = await DB.get('fulls', id), n = r.hist.length, c = catName(r.cat), box = (t, v) => v ? [h('div', { class: 'box' }, h('h3', { textContent: t }), v)] : [];
+  const full = await getFull(r), n = r.hist.length, c = catName(r.cat), box = (t, v) => v ? [h('div', { class: 'box' }, h('h3', { textContent: t }), v)] : [];
   const hero = full ? h('img', { class: 'hero', src: full.d }) : cover(r, 'hero ph');
   d.replaceChildren(h('div', { class: 'wrap' },
     h('div', { class: 'row' }, btn('← Back', () => location.hash = ''), h('span', { class: 'sp' }),
@@ -286,7 +336,7 @@ async function openForm(id) {
   const key = id || 'new', r = id && R.find(x => x.id === id); if (id && !r) { location.hash = ''; return; }
   const dr = await DB.get('meta', 'draft'); let restored = false;
   if (dr && dr.for === key) { D = dr.D; restored = true; }
-  else if (r) { const f = await DB.get('fulls', id); D = { ...blank(), ...r, id, img: f ? { thumb: T[id], full: f.d } : null }; } else D = blank();
+  else if (r) { const f = await getFull(r); D = { ...blank(), ...r, id, img: f ? { thumb: T[id], full: f.d } : null }; } else D = blank();
   const bind = (k, el) => { el.value = D[k] ?? ''; el.addEventListener('input', () => { D[k] = el.value; draft(); }); return el; };
   const fld = (label, el) => h('label', {}, h('span', { class: 'fl', textContent: label }), el);
   const cat = h('select', {}, h('option', { value: '', textContent: 'Uncategorized' }), ...CATS.map(c => h('option', { value: c.id, textContent: c.name })));
@@ -360,7 +410,7 @@ function roll() {
 function download(blob, name) { const a = h('a', { href: URL.createObjectURL(blob), download: name }); a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); }
 async function exportJSON(withImg) {
   const o = { v: 1, cats: CATS, recipes: R };
-  if (withImg) { o.thumbs = T; o.fulls = {}; (await DB.all('fulls')).forEach(x => o.fulls[x.id] = x.d); }
+  if (withImg) { for (const r of R) if (r.imgAt) await getFull(r); o.thumbs = T; o.fulls = {}; (await DB.all('fulls')).forEach(x => o.fulls[x.id] = x.d); }
   download(new Blob([JSON.stringify(o)], { type: 'application/json' }), 'recipes-' + new Date().toISOString().slice(0, 10) + '.json');
   lastExport = Date.now(); await DB.put('meta', lastExport, 'lastExport'); renderHome();
 }
@@ -510,7 +560,8 @@ function previewRows(rows) {
 }
 
 /* ===== 14. Cloud sync (Cloudflare Worker + D1) ===== */
-let SY = JSON.parse(localStorage.getItem('rc.sync') || 'null'), syncing = false, syncT;
+const VIEW = new URLSearchParams(location.search).get('view'), RO = !!VIEW;       // ?view=<worker url> -> read-only visitor mode
+let SY = JSON.parse(localStorage.getItem('rc.sync') || 'null'), syncing = false, syncT, rt;
 const syncSoon = () => { if (SY) { clearTimeout(syncT); syncT = setTimeout(sync, 1500); } };
 const api = (path, opt = {}) => fetch(SY.url.replace(/\/$/, '') + path, { ...opt, headers: { 'X-Key': SY.key } }).then(r => { if (!r.ok) throw new Error(r.status); return r; });
 const status = t => { const e = $('#syncst'); if (e) e.textContent = t; };
@@ -527,12 +578,15 @@ async function applyRow(row) {                                                  
   await saveR(r); cur ? Object.assign(cur, r) : R.push(r);
   if (!r.imgAt) { if (T[r.id]) { delete T[r.id]; await DB.del('thumbs', r.id); await DB.del('fulls', r.id); } }
   else if (had !== r.imgAt || !T[r.id]) {
-    const [th, fu] = await Promise.all(['thumb', 'full'].map(k => api(`/img/${r.id}/${k}`).then(z => z.text()).catch(() => null)));
-    if (th && fu) { T[r.id] = th; await DB.put('thumbs', { id: r.id, d: th }); await DB.put('fulls', { id: r.id, d: fu }); }
+    const th = await api(`/img/${r.id}/thumb`).then(z => z.text()).catch(() => null);          // only the thumbnail; the full image is fetched when the detail page opens
+    if (had !== r.imgAt) await DB.del('fulls', r.id);
+    if (th) { T[r.id] = th; await DB.put('thumbs', { id: r.id, d: th }); }
   }
 }
 async function sync() {
-  if (!SY || syncing) return; syncing = true; status('Syncing…');
+  if (!SY || syncing) return;
+  if (!navigator.onLine) { okState = false; status('Offline — changes will upload later'); return; }
+  syncing = true; okState = false; status('Syncing…');
   try {
     const t0 = Date.now(), lp = (await DB.get('meta', 'lastPush')) || 0, tb = await tomb(), pend = (await DB.get('meta', 'pendImg')) || [];
     for (const r of R) if (T[r.id] && !r.imgAt) { r.imgAt = r.updatedAt || r.createdAt; await saveR(r); pend.push(r.id); }          // first sync: existing images
@@ -553,24 +607,57 @@ async function sync() {
       await DB.put('meta', CATS, 'cats'); await DB.put('meta', d.cats.updated, 'catsAt');
     }
     await DB.put('meta', d.now - 5000, 'lastPull');
-    status('Synced ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+    showOk();
     if (!location.hash) renderHome();
-  } catch (e) { status('Sync failed (' + e.message + ')'); }
+  } catch (e) { okState = false; status(navigator.onLine ? 'Sync failed (' + e.message + ') — will retry' : 'Offline — changes will upload later'); }
   syncing = false;
+}
+async function loadView() {                                                         // visitors: read straight from the cloud; also used for auto-refresh
+  const base = VIEW.replace(/\/$/, ''), prev = Object.fromEntries(R.map(r => [r.id, r.imgAt]));
+  try {
+    const d = await (await fetch(base + '/sync?since=0')).json();
+    R = d.recipes.filter(x => !x.deleted).map(x => { const r = JSON.parse(x.data); r.hist = r.hist || []; r.tags = r.tags || []; return r; });
+    if (d.cats) CATS = JSON.parse(d.cats.data);
+  } catch (e) { okState = false; status(!navigator.onLine ? 'Offline' : R.length ? 'Could not refresh — will retry' : 'Could not load (is PUBLIC_READ enabled?)'); return; }
+  showOk(); if (!location.hash) renderHome();
+  R.forEach(r => { if (r.imgAt && (!T[r.id] || prev[r.id] !== r.imgAt)) fetch(`${base}/img/${r.id}/thumb`).then(z => z.ok ? z.text() : null).then(t => { if (t) { T[r.id] = t; clearTimeout(rt); rt = setTimeout(() => { if (!location.hash) renderHome(); }, 300); } }).catch(() => 0); });
+}
+const viewFull = r => r.imgAt ? fetch(`${VIEW.replace(/\/$/, '')}/img/${r.id}/full`).then(z => z.ok ? z.text() : null).then(t => t && { d: t }).catch(() => null) : null;
+async function getFull(r) {                                                         // full image: local copy, else download once when needed
+  if (RO) return viewFull(r);
+  const f = await DB.get('fulls', r.id); if (f || !r.imgAt || !SY) return f;
+  try { const t = await api(`/img/${r.id}/full`).then(z => z.text()); await DB.put('fulls', { id: r.id, d: t }); return { d: t }; } catch (e) { return null; }
+}
+/* status text + polling: every 15 s while the page is visible; nothing in the background; instant on return / back online */
+let lastOk = 0, okState = false, pollT;
+function paintOk() { if (!okState) return; const m = Math.floor((Date.now() - lastOk) / 60000); status((RO ? 'Updated' : 'Synced') + (m < 1 ? ' just now' : ` ${m} min ago`)); }
+function showOk() { lastOk = Date.now(); okState = true; paintOk(); }
+const tick = () => RO ? loadView() : sync();
+function poll() { clearInterval(pollT); pollT = setInterval(() => { if (!document.hidden && navigator.onLine) tick(); }, 15000); }
+setInterval(paintOk, 20000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+addEventListener('online', () => tick());
+addEventListener('offline', () => { okState = false; status(RO ? 'Offline' : 'Offline — changes will upload later'); });
+async function showDetail(id) { await showDetail0(id); if (RO) $('#detail').querySelectorAll('button').forEach(b => { if (!/Back/.test(b.textContent)) b.remove(); }); }
+async function copyView(url) {
+  if (!url) { alert('Enter the Worker URL first'); return; }
+  const l = location.origin + location.pathname + '?view=' + encodeURIComponent(url);
+  try { await navigator.clipboard.writeText(l); toast('View-only link copied'); } catch (e) { prompt('Copy this link', l); }
 }
 function syncDlg() {
   const u = h('input', { placeholder: 'https://recipes-sync.yourname.workers.dev', value: SY ? SY.url : '' }), k = h('input', { type: 'password', placeholder: 'Shared passphrase', value: SY ? SY.key : '' });
   dialog(h('h2', { textContent: 'Cloud sync' }), h('p', { class: 'dim', textContent: 'Both of you enter the same Worker URL and passphrase. Changes then sync automatically.' }),
     h('span', { class: 'fl', textContent: 'Worker URL' }), u, h('span', { class: 'fl', textContent: 'Passphrase' }), k,
-    h('div', { class: 'row', style: 'margin-top:14px' }, btn('Turn off', () => { localStorage.removeItem('rc.sync'); SY = null; status(''); $('#dlg').close(); }), h('span', { class: 'sp' }), closeBtn(),
-      btn('Save & sync', () => { SY = { url: u.value.trim(), key: k.value }; localStorage.setItem('rc.sync', JSON.stringify(SY)); $('#dlg').close(); sync(); setInterval(sync, 60000); }, 'pri')));
+    h('div', { class: 'row', style: 'margin-top:14px' }, btn('Copy view-only link', () => copyView(u.value.trim())), btn('Turn off', () => { localStorage.removeItem('rc.sync'); SY = null; status(''); $('#dlg').close(); }), h('span', { class: 'sp' }), closeBtn(),
+      btn('Save & sync', () => { SY = { url: u.value.trim(), key: k.value }; localStorage.setItem('rc.sync', JSON.stringify(SY)); $('#dlg').close(); sync(); poll(); }, 'pri')));
 }
 
 /* ===== 15. Routing & boot ===== */
 function route() {
   const [v, id] = location.hash.slice(1).split('/');
+  if (RO && (v === 'new' || v === 'e')) { location.hash = ''; return; }
   $('#home').hidden = !!v; $('#detail').hidden = v !== 'r'; $('#form').hidden = !(v === 'new' || v === 'e');
-  $('#sbBtn').hidden = !!v;
+  $('#sbBtn').hidden = !!v; document.body.dataset.v = v || 'home'; document.body.classList.remove('sbopen');
   if (v === 'r') showDetail(id); else if (v === 'new') openForm(null); else if (v === 'e') openForm(id); else renderHome();
   scrollTo(0, 0);
 }
@@ -582,7 +669,8 @@ function route() {
   if (!CATS) { CATS = DEF_CATS.map(name => ({ id: 'c-' + name.toLowerCase(), name })); await DB.put('meta', CATS, 'cats'); }
   $('#sbBtn').innerHTML = ico('filter'); $('#rollBtn').innerHTML = ico('dice', 16) + ' What to eat today?'; $('#newBtn').innerHTML = ico('plus', 16) + ' New'; $('#menuBtn').innerHTML = ico('dots');
   document.body.classList.toggle('nosb', localStorage.getItem('rc.nosb') === '1');
-  $('#sbBtn').onclick = () => { const o = document.body.classList.toggle('nosb'); localStorage.setItem('rc.nosb', o ? '1' : '0'); };
+  $('#sbBtn').onclick = () => { if (matchMedia('(max-width:640px)').matches) document.body.classList.toggle('sbopen'); else { const o = document.body.classList.toggle('nosb'); localStorage.setItem('rc.nosb', o ? '1' : '0'); } };
+  $('#scrim').onclick = () => document.body.classList.remove('sbopen');
   $('#sort').replaceChildren(...Object.entries(SORTS).map(([k, v]) => h('option', { value: k, textContent: v[0], selected: k === sortKey })));
   $('#sort').onchange = e => { sortKey = e.target.value; localStorage.setItem('rc.sort', sortKey); renderHome(); };
   $('#q').oninput = e => { F.q = e.target.value; if (location.hash) location.hash = ''; else renderHome(); };
@@ -595,9 +683,9 @@ function route() {
   document.addEventListener('drop', e => { if (!$('#form').hidden) { e.preventDefault(); setImg(e.dataTransfer.files[0]); } });
   addEventListener('hashchange', route);
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+  if (RO) { document.body.classList.add('ro'); T = {}; await loadView(); }
   route();
-  if (SY) { sync(); setInterval(sync, 60000); }
-  addEventListener('focus', sync);
+  if (RO) poll(); else if (SY) { sync(); poll(); }
 })();
 </script>
 </body>

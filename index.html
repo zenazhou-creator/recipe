@@ -560,10 +560,12 @@ function previewRows(rows) {
 }
 
 /* ===== 14. Cloud sync (Cloudflare Worker + D1) ===== */
-const VIEW = new URLSearchParams(location.search).get('view'), RO = !!VIEW;       // ?view=<worker url> -> read-only visitor mode
+const VIEW = new URLSearchParams(location.search).get('view'), RO = !!VIEW;
+const viewBase = () => VIEW === '1' ? location.origin + '/api' : VIEW.replace(/\/$/, '');      // ?view=1 -> the API on this same site       // ?view=<worker url> -> read-only visitor mode
 let SY = JSON.parse(localStorage.getItem('rc.sync') || 'null'), syncing = false, syncT, rt;
 const syncSoon = () => { if (SY) { clearTimeout(syncT); syncT = setTimeout(sync, 1500); } };
-const api = (path, opt = {}) => fetch(SY.url.replace(/\/$/, '') + path, { ...opt, headers: { 'X-Key': SY.key } }).then(r => { if (!r.ok) throw new Error(r.status); return r; });
+const apiBase = () => SY.url.trim() ? SY.url.trim().replace(/\/$/, '') : location.origin + '/api';   // empty URL -> same-site API (Pages Function)
+const api = (path, opt = {}) => fetch(apiBase() + path, { ...opt, headers: { 'X-Key': SY.key } }).then(r => { if (!r.ok) throw new Error(r.status); return r; });
 const status = t => { const e = $('#syncst'); if (e) e.textContent = t; };
 const tomb = async () => (await DB.get('meta', 'tomb')) || {};                     // ids deleted here, so deletions sync too
 async function addTomb(id) { const t = await tomb(); t[id] = Date.now(); await DB.put('meta', t, 'tomb'); syncSoon(); }
@@ -613,16 +615,16 @@ async function sync() {
   syncing = false;
 }
 async function loadView() {                                                         // visitors: read straight from the cloud; also used for auto-refresh
-  const base = VIEW.replace(/\/$/, ''), prev = Object.fromEntries(R.map(r => [r.id, r.imgAt]));
+  const base = viewBase(), prev = Object.fromEntries(R.map(r => [r.id, r.imgAt]));
   try {
     const d = await (await fetch(base + '/sync?since=0')).json();
     R = d.recipes.filter(x => !x.deleted).map(x => { const r = JSON.parse(x.data); r.hist = r.hist || []; r.tags = r.tags || []; return r; });
     if (d.cats) CATS = JSON.parse(d.cats.data);
-  } catch (e) { okState = false; status(!navigator.onLine ? 'Offline' : R.length ? 'Could not refresh — will retry' : 'Could not load (is PUBLIC_READ enabled?)'); return; }
+  } catch (e) { okState = false; status(!navigator.onLine ? 'Offline' : R.length ? 'Could not refresh — will retry' : 'Could not load (check API / PUBLIC_READ)'); return; }
   showOk(); if (!location.hash) renderHome();
   R.forEach(r => { if (r.imgAt && (!T[r.id] || prev[r.id] !== r.imgAt)) fetch(`${base}/img/${r.id}/thumb`).then(z => z.ok ? z.text() : null).then(t => { if (t) { T[r.id] = t; clearTimeout(rt); rt = setTimeout(() => { if (!location.hash) renderHome(); }, 300); } }).catch(() => 0); });
 }
-const viewFull = r => r.imgAt ? fetch(`${VIEW.replace(/\/$/, '')}/img/${r.id}/full`).then(z => z.ok ? z.text() : null).then(t => t && { d: t }).catch(() => null) : null;
+const viewFull = r => r.imgAt ? fetch(`${viewBase()}/img/${r.id}/full`).then(z => z.ok ? z.text() : null).then(t => t && { d: t }).catch(() => null) : null;
 async function getFull(r) {                                                         // full image: local copy, else download once when needed
   if (RO) return viewFull(r);
   const f = await DB.get('fulls', r.id); if (f || !r.imgAt || !SY) return f;
@@ -640,14 +642,13 @@ addEventListener('online', () => tick());
 addEventListener('offline', () => { okState = false; status(RO ? 'Offline' : 'Offline — changes will upload later'); });
 async function showDetail(id) { await showDetail0(id); if (RO) $('#detail').querySelectorAll('button').forEach(b => { if (!/Back/.test(b.textContent)) b.remove(); }); }
 async function copyView(url) {
-  if (!url) { alert('Enter the Worker URL first'); return; }
-  const l = location.origin + location.pathname + '?view=' + encodeURIComponent(url);
+  const l = location.origin + location.pathname + '?view=' + (url ? encodeURIComponent(url) : '1');
   try { await navigator.clipboard.writeText(l); toast('View-only link copied'); } catch (e) { prompt('Copy this link', l); }
 }
 function syncDlg() {
-  const u = h('input', { placeholder: 'https://recipes-sync.yourname.workers.dev', value: SY ? SY.url : '' }), k = h('input', { type: 'password', placeholder: 'Shared passphrase', value: SY ? SY.key : '' });
-  dialog(h('h2', { textContent: 'Cloud sync' }), h('p', { class: 'dim', textContent: 'Both of you enter the same Worker URL and passphrase. Changes then sync automatically.' }),
-    h('span', { class: 'fl', textContent: 'Worker URL' }), u, h('span', { class: 'fl', textContent: 'Passphrase' }), k,
+  const u = h('input', { placeholder: 'Leave empty to use this site (recommended)', value: SY ? SY.url : '' }), k = h('input', { type: 'password', placeholder: 'Shared passphrase', value: SY ? SY.key : '' });
+  dialog(h('h2', { textContent: 'Cloud sync' }), h('p', { class: 'dim', textContent: 'Leave the URL empty when the API lives on this same site. Both of you use the same passphrase; changes then sync automatically.' }),
+    h('span', { class: 'fl', textContent: 'API URL (optional)' }), u, h('span', { class: 'fl', textContent: 'Passphrase' }), k,
     h('div', { class: 'row', style: 'margin-top:14px' }, btn('Copy view-only link', () => copyView(u.value.trim())), btn('Turn off', () => { localStorage.removeItem('rc.sync'); SY = null; status(''); $('#dlg').close(); }), h('span', { class: 'sp' }), closeBtn(),
       btn('Save & sync', () => { SY = { url: u.value.trim(), key: k.value }; localStorage.setItem('rc.sync', JSON.stringify(SY)); $('#dlg').close(); sync(); poll(); }, 'pri')));
 }

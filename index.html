@@ -87,6 +87,7 @@ dialog h2{margin:0 0 10px;font:700 20px var(--serif)}
   <div class="logo" id="logo" style="cursor:pointer"><i></i>My Recipes</div>
   <input id="q" placeholder="Search name, ingredients, tags, category">
   <span class="sp"></span>
+  <span id="syncst" class="dim" style="font-size:12px"></span>
   <button class="out" id="rollBtn"></button>
   <button class="pri" id="newBtn"></button>
   <button class="ic" id="menuBtn" title="More" style="color:var(--ink)"></button>
@@ -149,6 +150,7 @@ const catName = id => (CATS.find(c => c.id === id) || {}).name || '';
 const fmt = t => new Date(t).toLocaleDateString('en-GB');
 const metaLine = r => [r.min && r.min + ' min', r.serv && r.serv + (r.serv === 1 ? ' serving' : ' servings')].filter(Boolean).join(' · ');
 const saveR = r => DB.put('recipes', r);
+const touch = r => { r.updatedAt = Date.now(); saveR(r); syncSoon(); };      // any edit that must reach the other person
 const h = (tag, p = {}, ...kids) => {
   const e = document.createElement(tag);
   for (const k in p) { if (k === 'on') for (const n in p.on) e.addEventListener(n, p.on[n]); else if (k === 'html') e.innerHTML = p[k]; else if (k in e) e[k] = p[k]; else e.setAttribute(k, p[k]); }
@@ -199,7 +201,7 @@ function renderSide() {
 }
 function card(r) {
   const cv = cover(r, 'cv'), c = catName(r.cat), m = metaLine(r);
-  cv.append(h('button', { class: 'star' + (r.star ? ' on' : ''), title: 'Favorite', html: ico('star', 16), on: { click: e => { e.stopPropagation(); r.star = !r.star; saveR(r); renderHome(); } } }),
+  cv.append(h('button', { class: 'star' + (r.star ? ' on' : ''), title: 'Favorite', html: ico('star', 16), on: { click: e => { e.stopPropagation(); r.star = !r.star; touch(r); renderHome(); } } }),
     h('div', { class: 'pills' },
       ...(r.diff ? [h('span', { class: 'pl', style: `background:${DPILL[DIFF.indexOf(r.diff)][0]};color:${DPILL[DIFF.indexOf(r.diff)][1]}`, textContent: DL[DIFF.indexOf(r.diff)] })] : []),
       ...(c ? [h('span', { class: 'pl', textContent: c })] : [])));
@@ -225,10 +227,10 @@ async function remove(r) {
   if (!confirm(`Delete "${r.name}"?`)) return;
   undoBuf = { r, th: T[r.id], full: await DB.get('fulls', r.id) };
   R = R.filter(x => x !== r); delete T[r.id];
-  await Promise.all([DB.del('recipes', r.id), DB.del('thumbs', r.id), DB.del('fulls', r.id)]);
+  await Promise.all([DB.del('recipes', r.id), DB.del('thumbs', r.id), DB.del('fulls', r.id)]); await addTomb(r.id);
   if (location.hash) location.hash = ''; else renderHome();
   toast('Recipe deleted', 'Undo', async () => {
-    const u = undoBuf; R.push(u.r); await saveR(u.r);
+    const u = undoBuf; R.push(u.r); u.r.updatedAt = Date.now(); await saveR(u.r); await delTomb(u.r.id); syncSoon();
     if (u.th) { T[u.r.id] = u.th; await DB.put('thumbs', { id: u.r.id, d: u.th }); }
     if (u.full) await DB.put('fulls', u.full); renderHome();
   });
@@ -250,12 +252,12 @@ async function showDetail(id) {
   const hero = full ? h('img', { class: 'hero', src: full.d }) : cover(r, 'hero ph');
   d.replaceChildren(h('div', { class: 'wrap' },
     h('div', { class: 'row' }, btn('← Back', () => location.hash = ''), h('span', { class: 'sp' }),
-      btn(r.star ? '★ Favorited' : '☆ Favorite', () => { r.star = !r.star; saveR(r); showDetail(id); }), btn('Edit', () => location.hash = '#e/' + id), btn('Delete', () => remove(r))),
+      btn(r.star ? '★ Favorited' : '☆ Favorite', () => { r.star = !r.star; touch(r); showDetail(id); }), btn('Edit', () => location.hash = '#e/' + id), btn('Delete', () => remove(r))),
     hero, h('h1', { class: 't', textContent: r.name }),
     h('div', { class: 'dim', textContent: [metaLine(r), r.diff && DL[DIFF.indexOf(r.diff)], c, ...r.tags.map(t => '#' + t)].filter(Boolean).join('  ·  ') }),
-    h('div', { class: 'row', style: 'margin:14px 0' }, btn('Cooked it ✓', () => { r.hist.push(Date.now()); saveR(r); showDetail(id); }, 'pri'),
+    h('div', { class: 'row', style: 'margin:14px 0' }, btn('Cooked it ✓', () => { r.hist.push(Date.now()); touch(r); showDetail(id); }, 'pri'),
       h('span', { class: 'dim', textContent: n ? `Cooked ${n} ${n === 1 ? 'time' : 'times'} · last on ${fmt(ld(r))}` : 'Not cooked yet' }),
-      ...(n ? [btn('Undo', () => { r.hist.pop(); saveR(r); showDetail(id); })] : [])),
+      ...(n ? [btn('Undo', () => { r.hist.pop(); touch(r); showDetail(id); })] : [])),
     h('div', { class: 'two' }, h('div', {}, ...box('Ingredients', r.ing.trim() && lines(r.ing, false))),
       h('div', {}, ...box('Steps', r.steps.trim() && lines(r.steps, true)), ...box('Notes', r.note.trim() && h('div', { class: 'ln', textContent: r.note })),
         ...box('Source', /^https?:/.test(r.src) && h('a', { href: r.src, target: '_blank', rel: 'noreferrer noopener', textContent: r.src }))))));
@@ -314,14 +316,15 @@ async function openForm(id) {
 async function save() {
   const name = D.name.trim(); if (!name) { alert('Please enter a recipe name'); return; }
   const now = Date.now(), old = D.id && R.find(x => x.id === D.id), id = D.id || uid();
-  const r = { id, name, createdAt: old ? old.createdAt : now, updatedAt: now, min: +D.min || 0, serv: +D.serv || 0, diff: D.diff, cat: D.cat, tags: D.tags, star: old ? old.star : false, hist: old ? old.hist : [], ing: D.ing, steps: D.steps, note: D.note, src: D.src.trim() };
+  const r = { id, name, createdAt: old ? old.createdAt : now, updatedAt: now, min: +D.min || 0, serv: +D.serv || 0, diff: D.diff, cat: D.cat, tags: D.tags, star: old ? old.star : false, hist: old ? old.hist : [], ing: D.ing, steps: D.steps, note: D.note, src: D.src.trim(),
+    imgAt: D.imgChanged ? (D.img ? now : 0) : (old ? old.imgAt || 0 : 0) };
   await saveR(r);
   if (D.imgChanged) {
-    if (D.img) { T[id] = D.img.thumb; await DB.put('thumbs', { id, d: D.img.thumb }); await DB.put('fulls', { id, d: D.img.full }); }
+    if (D.img) { T[id] = D.img.thumb; await DB.put('thumbs', { id, d: D.img.thumb }); await DB.put('fulls', { id, d: D.img.full }); await addPend(id); }
     else { delete T[id]; await DB.del('thumbs', id); await DB.del('fulls', id); }
   }
   old ? Object.assign(old, r) : R.push(r);
-  clearTimeout(draftT); await DB.del('meta', 'draft'); location.hash = '#r/' + id;
+  clearTimeout(draftT); await DB.del('meta', 'draft'); syncSoon(); location.hash = '#r/' + id;
 }
 
 /* ===== 10. Dialogs: menu, categories, roll ===== */
@@ -329,16 +332,16 @@ function dialog(...kids) { const d = $('#dlg'); d.onclose = null; d.replaceChild
 const closeBtn = () => btn('Close', () => $('#dlg').close());
 function menu() {
   dialog(h('h2', { textContent: 'More' }),
-    ...[['Import (Excel / CSV / JSON backup)', batchDlg], ['Export to Excel (no images)', exportXlsx], ['Export backup JSON (with images)', () => exportJSON(true)], ['Export backup JSON (no images)', () => exportJSON(false)], ['Manage categories', manageCats]].map(([t, f]) => h('button', { class: 'mi', textContent: t, on: { click: () => { $('#dlg').close(); f(); } } })),
+    ...[['Import (Excel / CSV / JSON backup)', batchDlg], ['Export to Excel (no images)', exportXlsx], ['Export backup JSON (with images)', () => exportJSON(true)], ['Export backup JSON (no images)', () => exportJSON(false)], ['Cloud sync settings', syncDlg], ['Manage categories', manageCats]].map(([t, f]) => h('button', { class: 'mi', textContent: t, on: { click: () => { $('#dlg').close(); f(); } } })),
     h('div', { class: 'dim', style: 'margin:10px 0', textContent: lastExport ? 'Last export: ' + fmt(lastExport) : 'Never exported' }), closeBtn());
 }
 function manageCats(after) {
-  const saveC = () => DB.put('meta', CATS, 'cats');
+  const saveC = saveCats;
   const draw = () => {
     const d = dialog(h('h2', { textContent: 'Categories' }),
       ...CATS.map(c => h('div', { class: 'row', style: 'margin:6px 0' }, h('span', { class: 'sp', textContent: c.name }),
         btn('Rename', async () => { const n = prompt('New name', c.name); if (n && n.trim()) { c.name = n.trim(); await saveC(); draw(); } }),
-        btn('Delete', async () => { if (!confirm(`Delete "${c.name}"? Its recipes become uncategorized.`)) return; CATS = CATS.filter(x => x !== c); for (const r of R) if (r.cat === c.id) { r.cat = ''; await saveR(r); } await saveC(); draw(); }))),
+        btn('Delete', async () => { if (!confirm(`Delete "${c.name}"? Its recipes become uncategorized.`)) return; CATS = CATS.filter(x => x !== c); for (const r of R) if (r.cat === c.id) { r.cat = ''; touch(r); } await saveC(); draw(); }))),
       h('div', { class: 'row', style: 'margin-top:10px' }, h('input', { id: 'newcat', placeholder: 'New category' }), btn('Add', async () => { const n = $('#newcat').value.trim(); if (n) { CATS.push({ id: uid(), name: n }); await saveC(); draw(); } })),
       h('div', { class: 'row', style: 'margin-top:12px' }, h('span', { class: 'sp' }), closeBtn()));
     d.onclose = () => { renderHome(); if (typeof after === 'function') after(); };
@@ -364,7 +367,7 @@ async function exportJSON(withImg) {
 async function importJSON(file) {
   try {
     const d = JSON.parse(await file.text()); if (!Array.isArray(d.recipes)) throw 0;
-    (d.cats || []).forEach(c => { if (!CATS.some(x => x.id === c.id)) CATS.push(c); }); await DB.put('meta', CATS, 'cats'); let n = 0;
+    (d.cats || []).forEach(c => { if (!CATS.some(x => x.id === c.id)) CATS.push(c); }); await saveCats(); let n = 0;
     for (const r of d.recipes) {
       const cur = R.find(x => x.id === r.id); if (cur && cur.updatedAt >= r.updatedAt) continue;
       r.hist = r.hist || []; r.tags = r.tags || []; await saveR(r);
@@ -372,7 +375,7 @@ async function importJSON(file) {
       if (d.fulls && d.fulls[r.id]) await DB.put('fulls', { id: r.id, d: d.fulls[r.id] });
       cur ? Object.assign(cur, r) : R.push(r); n++;
     }
-    toast(`Imported ${n} recipes`); renderHome();
+    toast(`Imported ${n} recipes`); await DB.put('meta', 0, 'lastPush'); syncSoon(); renderHome();
   } catch (e) { alert('That file is not a valid backup'); }
 }
 
@@ -496,7 +499,7 @@ function previewRows(rows) {
         const r = { id: uid(), name: it.name, createdAt: now + n, updatedAt: now + n, min: it.min, serv: it.serv, diff: it.diff, cat, tags: it.tags, star: false, hist: [], ing: it.ing, steps: it.steps, note: it.note, src: it.src };
         await saveR(r); R.push(r); n++;
       }
-      await DB.put('meta', CATS, 'cats'); $('#dlg').close(); toast(`Imported ${n} recipes`); renderHome();
+      await saveCats(); $('#dlg').close(); toast(`Imported ${n} recipes`); await DB.put('meta', 0, 'lastPush'); syncSoon(); renderHome();
     };
     dialog(h('h2', { textContent: 'Preview' }), h('div', { textContent: `${items.length} recipes found${dups ? `, ${dups} already exist (same name)` : ''}.` }),
       h('ul', {}, ...items.slice(0, 8).map(x => h('li', { textContent: [x.name, x.cat, x.min && x.min + ' min', x.serv && x.serv + ' servings'].filter(Boolean).join(' · ') + (x.dup ? ' (duplicate)' : '') })), ...(items.length > 8 ? [h('li', { class: 'dim', textContent: `…and ${items.length - 8} more` })] : [])),
@@ -506,7 +509,64 @@ function previewRows(rows) {
   } catch (e) { alert('Could not read that file. Please use the downloaded template (.xlsx) or a .csv.'); }
 }
 
-/* ===== 14. Routing & boot ===== */
+/* ===== 14. Cloud sync (Cloudflare Worker + D1) ===== */
+let SY = JSON.parse(localStorage.getItem('rc.sync') || 'null'), syncing = false, syncT;
+const syncSoon = () => { if (SY) { clearTimeout(syncT); syncT = setTimeout(sync, 1500); } };
+const api = (path, opt = {}) => fetch(SY.url.replace(/\/$/, '') + path, { ...opt, headers: { 'X-Key': SY.key } }).then(r => { if (!r.ok) throw new Error(r.status); return r; });
+const status = t => { const e = $('#syncst'); if (e) e.textContent = t; };
+const tomb = async () => (await DB.get('meta', 'tomb')) || {};                     // ids deleted here, so deletions sync too
+async function addTomb(id) { const t = await tomb(); t[id] = Date.now(); await DB.put('meta', t, 'tomb'); syncSoon(); }
+async function delTomb(id) { const t = await tomb(); delete t[id]; await DB.put('meta', t, 'tomb'); }
+async function addPend(id) { const p = (await DB.get('meta', 'pendImg')) || []; if (!p.includes(id)) p.push(id); await DB.put('meta', p, 'pendImg'); }
+async function saveCats() { await DB.put('meta', CATS, 'cats'); await DB.put('meta', Date.now(), 'catsAt'); syncSoon(); }
+
+async function applyRow(row) {                                                       // one recipe coming from the cloud
+  const cur = R.find(x => x.id === row.id); if (cur && cur.updatedAt >= row.updated) return;
+  if (row.deleted) { if (cur) { R = R.filter(x => x !== cur); delete T[cur.id]; await Promise.all([DB.del('recipes', cur.id), DB.del('thumbs', cur.id), DB.del('fulls', cur.id)]); } return; }
+  const r = JSON.parse(row.data), had = cur ? cur.imgAt || 0 : 0; r.hist = r.hist || []; r.tags = r.tags || [];
+  await saveR(r); cur ? Object.assign(cur, r) : R.push(r);
+  if (!r.imgAt) { if (T[r.id]) { delete T[r.id]; await DB.del('thumbs', r.id); await DB.del('fulls', r.id); } }
+  else if (had !== r.imgAt || !T[r.id]) {
+    const [th, fu] = await Promise.all(['thumb', 'full'].map(k => api(`/img/${r.id}/${k}`).then(z => z.text()).catch(() => null)));
+    if (th && fu) { T[r.id] = th; await DB.put('thumbs', { id: r.id, d: th }); await DB.put('fulls', { id: r.id, d: fu }); }
+  }
+}
+async function sync() {
+  if (!SY || syncing) return; syncing = true; status('Syncing…');
+  try {
+    const t0 = Date.now(), lp = (await DB.get('meta', 'lastPush')) || 0, tb = await tomb(), pend = (await DB.get('meta', 'pendImg')) || [];
+    for (const r of R) if (T[r.id] && !r.imgAt) { r.imgAt = r.updatedAt || r.createdAt; await saveR(r); pend.push(r.id); }          // first sync: existing images
+    for (const id of pend) {
+      const r = R.find(x => x.id === id), f = await DB.get('fulls', id);
+      if (r && r.imgAt > 0 && f && T[id]) { await api(`/img/${id}/thumb`, { method: 'PUT', body: T[id] }); await api(`/img/${id}/full`, { method: 'PUT', body: f.d }); }
+    }
+    await DB.put('meta', [], 'pendImg');
+    const out = R.filter(r => r.updatedAt > lp).map(r => ({ id: r.id, updated: r.updatedAt, deleted: 0, data: JSON.stringify(r) }))
+      .concat(Object.entries(tb).filter(([, u]) => u > lp).map(([id, u]) => ({ id, updated: u, deleted: 1, data: '' })));
+    const catsAt = (await DB.get('meta', 'catsAt')) || 0, cats = catsAt > lp ? { updated: catsAt, data: JSON.stringify(CATS) } : null;
+    for (let i = 0; i < Math.max(out.length, 1); i += 25) await api('/sync', { method: 'POST', body: JSON.stringify({ recipes: out.slice(i, i + 25), cats: i ? null : cats }) });
+    await DB.put('meta', t0 - 5000, 'lastPush');
+    const since = (await DB.get('meta', 'lastPull')) || 0, d = await (await api('/sync?since=' + since)).json();
+    for (const row of d.recipes) await applyRow(row);
+    if (d.cats && d.cats.updated > catsAt) {
+      JSON.parse(d.cats.data).forEach(c => { const i = CATS.findIndex(x => x.id === c.id); i < 0 ? CATS.push(c) : CATS[i] = c; });
+      await DB.put('meta', CATS, 'cats'); await DB.put('meta', d.cats.updated, 'catsAt');
+    }
+    await DB.put('meta', d.now - 5000, 'lastPull');
+    status('Synced ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }));
+    if (!location.hash) renderHome();
+  } catch (e) { status('Sync failed (' + e.message + ')'); }
+  syncing = false;
+}
+function syncDlg() {
+  const u = h('input', { placeholder: 'https://recipes-sync.yourname.workers.dev', value: SY ? SY.url : '' }), k = h('input', { type: 'password', placeholder: 'Shared passphrase', value: SY ? SY.key : '' });
+  dialog(h('h2', { textContent: 'Cloud sync' }), h('p', { class: 'dim', textContent: 'Both of you enter the same Worker URL and passphrase. Changes then sync automatically.' }),
+    h('span', { class: 'fl', textContent: 'Worker URL' }), u, h('span', { class: 'fl', textContent: 'Passphrase' }), k,
+    h('div', { class: 'row', style: 'margin-top:14px' }, btn('Turn off', () => { localStorage.removeItem('rc.sync'); SY = null; status(''); $('#dlg').close(); }), h('span', { class: 'sp' }), closeBtn(),
+      btn('Save & sync', () => { SY = { url: u.value.trim(), key: k.value }; localStorage.setItem('rc.sync', JSON.stringify(SY)); $('#dlg').close(); sync(); setInterval(sync, 60000); }, 'pri')));
+}
+
+/* ===== 15. Routing & boot ===== */
 function route() {
   const [v, id] = location.hash.slice(1).split('/');
   $('#home').hidden = !!v; $('#detail').hidden = v !== 'r'; $('#form').hidden = !(v === 'new' || v === 'e');
@@ -519,7 +579,7 @@ function route() {
   R = await DB.all('recipes'); R.forEach(r => { r.hist = r.hist || []; r.tags = r.tags || []; });
   (await DB.all('thumbs')).forEach(x => T[x.id] = x.d);
   CATS = await DB.get('meta', 'cats'); lastExport = (await DB.get('meta', 'lastExport')) || 0;
-  if (!CATS) { CATS = DEF_CATS.map(name => ({ id: uid(), name })); await DB.put('meta', CATS, 'cats'); }
+  if (!CATS) { CATS = DEF_CATS.map(name => ({ id: 'c-' + name.toLowerCase(), name })); await DB.put('meta', CATS, 'cats'); }
   $('#sbBtn').innerHTML = ico('filter'); $('#rollBtn').innerHTML = ico('dice', 16) + ' What to eat today?'; $('#newBtn').innerHTML = ico('plus', 16) + ' New'; $('#menuBtn').innerHTML = ico('dots');
   document.body.classList.toggle('nosb', localStorage.getItem('rc.nosb') === '1');
   $('#sbBtn').onclick = () => { const o = document.body.classList.toggle('nosb'); localStorage.setItem('rc.nosb', o ? '1' : '0'); };
@@ -536,6 +596,8 @@ function route() {
   addEventListener('hashchange', route);
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
   route();
+  if (SY) { sync(); setInterval(sync, 60000); }
+  addEventListener('focus', sync);
 })();
 </script>
 </body>

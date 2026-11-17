@@ -97,7 +97,7 @@ dialog h2{margin:0 0 10px;font:700 20px var(--serif)}
 <dialog id="dlg"></dialog>
 <div id="toast" hidden></div>
 <input type="file" id="jsonFile" accept=".json" hidden>
-<input type="file" id="xlsFile" accept=".xlsx,.csv" hidden>
+<input type="file" id="xlsFile" accept=".xlsx,.csv,.json" hidden>
 
 <script>
 'use strict';
@@ -215,7 +215,7 @@ function renderHome() {
   $('#info').textContent = R.length ? `${list.length} ${list.length === 1 ? 'recipe' : 'recipes'}` : '';
   $('#bk').replaceChildren(...(old ? [h('div', { class: 'box row', style: 'padding:8px 14px;margin-bottom:14px' }, h('span', { class: 'dim sp', textContent: 'Tip: export a backup file now and then — data lives only in this browser.' }), btn('Export backup', () => exportJSON(true)))] : []));
   g.replaceChildren();
-  if (!R.length) { g.className = 'empty'; g.append(h('p', { textContent: 'No recipes yet' }), h('div', { class: 'row', style: 'justify-content:center' }, btn('New recipe', () => location.hash = '#new', 'pri'), btn('Batch import', batchDlg))); return; }
+  if (!R.length) { g.className = 'empty'; g.append(h('p', { textContent: 'No recipes yet' }), h('div', { class: 'row', style: 'justify-content:center' }, btn('New recipe', () => location.hash = '#new', 'pri'), btn('Import', batchDlg))); return; }
   if (!list.length) { g.className = 'empty'; g.append(h('p', { textContent: 'No recipes match your filters' }), btn('Clear filters', clearF)); return; }
   g.className = 'grid'; list.forEach(r => g.append(card(r)));
 }
@@ -329,8 +329,7 @@ function dialog(...kids) { const d = $('#dlg'); d.onclose = null; d.replaceChild
 const closeBtn = () => btn('Close', () => $('#dlg').close());
 function menu() {
   dialog(h('h2', { textContent: 'More' }),
-    ...[['Batch import (Excel / CSV)', batchDlg], ['Export backup (with images)', () => exportJSON(true)], ['Export backup (no images)', () => exportJSON(false)],
-      ['Import backup (JSON)', () => $('#jsonFile').click()], ['Manage categories', manageCats]].map(([t, f]) => h('button', { class: 'mi', textContent: t, on: { click: () => { $('#dlg').close(); f(); } } })),
+    ...[['Import (Excel / CSV / JSON backup)', batchDlg], ['Export to Excel (no images)', exportXlsx], ['Export backup JSON (with images)', () => exportJSON(true)], ['Export backup JSON (no images)', () => exportJSON(false)], ['Manage categories', manageCats]].map(([t, f]) => h('button', { class: 'mi', textContent: t, on: { click: () => { $('#dlg').close(); f(); } } })),
     h('div', { class: 'dim', style: 'margin:10px 0', textContent: lastExport ? 'Last export: ' + fmt(lastExport) : 'Never exported' }), closeBtn());
 }
 function manageCats(after) {
@@ -413,18 +412,20 @@ async function readXlsx(buf) {
     const ds = lo + 30 + v.getUint16(lo + 26, true) + v.getUint16(lo + 28, true), raw = u.subarray(ds, ds + cs);
     files[name] = m === 0 ? dec.decode(raw) : dec.decode(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
   }
-  const P = s => new DOMParser().parseFromString(s, 'application/xml');
-  const ss = files['xl/sharedStrings.xml'] ? [...P(files['xl/sharedStrings.xml']).querySelectorAll('si')].map(x => x.textContent) : [];
-  const sn = Object.keys(files).filter(k => k.includes('worksheets')).sort()[0], rows = [];
-  P(files[sn]).querySelectorAll('c').forEach(c => {
-    const m = /^([A-Z]+)(\d+)$/.exec(c.getAttribute('r')); if (!m) return;
-    const ci = [...m[1]].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1, ri = +m[2] - 1, t = c.getAttribute('t'), vv = c.querySelector('v');
-    (rows[ri] = rows[ri] || [])[ci] = t === 's' ? ss[+vv.textContent] : t === 'inlineStr' ? c.textContent : vv ? vv.textContent : '';
-  });
+  const unx = x => x.replace(/&(#x?[0-9a-f]+|amp|lt|gt|quot|apos);/gi, (m, e) => e[0] === '#' ? String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : +e.slice(1)) : { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" }[e.toLowerCase()]);
+  const txt = x => [...x.replace(/<rPh[\s\S]*?<\/rPh>/g, '').matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map(m => unx(m[1])).join('');
+  const ss = files['xl/sharedStrings.xml'] ? [...files['xl/sharedStrings.xml'].matchAll(/<si\b[^>]*?(?:\/>|>([\s\S]*?)<\/si>)/g)].map(m => txt(m[1] || '')) : [];
+  const sn = Object.keys(files).filter(k => k.includes('worksheets')).sort((x, y) => x.length - y.length || (x < y ? -1 : 1))[0], rows = [];
+  for (const m of files[sn].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+    const ref = /\br="([A-Z]+)(\d+)"/.exec(m[1]); if (!ref) continue;
+    const t = (/\bt="(\w+)"/.exec(m[1]) || [])[1], inner = m[2] || '', vm = /<v>([\s\S]*?)<\/v>/.exec(inner);
+    const ci = [...ref[1]].reduce((a, ch) => a * 26 + ch.charCodeAt(0) - 64, 0) - 1, ri = +ref[2] - 1;
+    (rows[ri] = rows[ri] || [])[ci] = t === 's' ? ss[+vm[1]] : t === 'inlineStr' ? txt(inner) : vm ? unx(vm[1]) : '';
+  }
   return Array.from(rows, r => r || []);
 }
 function parseCSV(t) {
-  t = t.replace(/^\uFEFF/, ''); const first = t.split('\n')[0], sep = (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ';' : ',';
+  t = t.replace(/^\uFEFF/, ''); const first = t.split('\n')[0], sep = first.includes('\t') ? '\t' : (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ';' : ',';
   const rows = []; let r = [], f = '', q = false;
   for (let i = 0; i < t.length; i++) {
     const c = t[i];
@@ -437,31 +438,56 @@ function parseCSV(t) {
 
 /* ===== 13. Batch import dialog ===== */
 const DMAP = { easy: '简单', medium: '中等', hard: '困难', 简单: '简单', 中等: '中等', 困难: '困难' };
-function plan(rows) {                                    // rows -> {items, warnings}; nothing is saved here
-  const head = (rows[0] || []).map(x => String(x ?? '').trim().toLowerCase()), g = (r, k) => { const i = head.indexOf(k); return i < 0 ? '' : String(r[i] ?? '').trim(); };
-  const items = [], seen = new Set(R.map(r => r.name.toLowerCase())), warn = [];
-  rows.slice(1).forEach((r, i) => {
+const KEYS = ['name', 'category', 'difficulty', 'minutes', 'servings', 'tags', 'source', 'ingredients', 'steps', 'notes'];   // template column order
+const ALIAS = { name: ['name', '菜名', '名称', '名字', '菜谱', 'recipe', 'title'], category: ['category', '分类', '类别'], difficulty: ['difficulty', '难度'],
+  minutes: ['minutes', '用时', '时间', '分钟', 'time'], servings: ['servings', '份量', '人份', '份数'], tags: ['tags', '标签'], source: ['source', '来源', '链接'],
+  ingredients: ['ingredients', '食材', '材料', '原料'], steps: ['steps', '步骤', '做法'], notes: ['notes', '小贴士', '备注', '笔记'] };
+const hnorm = x => String(x ?? '').trim().toLowerCase().replace(/[*＊]|[（(].*$/g, '').trim();
+const mins = s => { s = String(s); let m = 0; const hr = /(\d+(?:\.\d+)?)\s*(?:h|hr|hour|小时)/i.exec(s), mi = /(\d+)\s*(?:m|min|分)/i.exec(s); if (hr) m += parseFloat(hr[1]) * 60; if (mi) m += +mi[1]; return Math.round(m || parseFloat(s) || 0); };
+function plan(rows) {                                    // rows -> {items, warn}; nothing is saved here
+  let hi = rows.slice(0, 5).findIndex(r => r.some(x => ALIAS.name.includes(hnorm(x)))), warn = [];
+  const col = {};
+  if (hi < 0) { hi = 0; KEYS.forEach((k, i) => col[k] = i); warn.push('No header row recognized: using the template column order'); }
+  else KEYS.forEach(k => col[k] = rows[hi].findIndex(x => ALIAS[k].includes(hnorm(x))));
+  const g = (r, k) => col[k] < 0 ? '' : String(r[col[k]] ?? '').trim();
+  const items = [], seen = new Set(R.map(r => r.name.toLowerCase()));
+  rows.slice(hi + 1).forEach((r, i) => {
     if (!r.some(x => String(x ?? '').trim())) return;
-    const name = g(r, 'name'); if (!name) { warn.push(`Row ${i + 2}: no name, skipped`); return; }
+    const name = g(r, 'name'); if (!name) { warn.push(`Row ${hi + i + 2}: no name, skipped`); return; }
     const dif = g(r, 'difficulty'), d = DMAP[dif.toLowerCase()] || ''; if (dif && !d) warn.push(`"${name}": difficulty "${dif}" not recognized, left empty`);
     const dup = seen.has(name.toLowerCase()); seen.add(name.toLowerCase());
-    items.push({ name, dup, cat: g(r, 'category'), diff: d, min: parseInt(g(r, 'minutes')) || 0, serv: parseInt(g(r, 'servings')) || 0, tags: g(r, 'tags').split(/[,;，、]/).map(s => s.trim().replace(/^#/, '')).filter(Boolean),
-      src: g(r, 'source'), ing: g(r, 'ingredients'), steps: g(r, 'steps').split('\n').map(s => s.replace(/^\s*\d+[.)、]\s*/, '')).join('\n'), note: g(r, 'notes') });
+    const cp = g(r, 'category').split(/[・·\/／|]/).map(x => x.trim()).filter(Boolean), tags = g(r, 'tags').split(/[,;，、；]/).map(x => x.trim().replace(/^#/, '')).filter(Boolean);
+    cp.slice(1).forEach(x => { if (!tags.includes(x)) tags.push(x); });          // "荤菜・家常" -> category 荤菜, tag 家常
+    let ing = g(r, 'ingredients'), st = g(r, 'steps'); if (!ing.includes('\n')) ing = ing.split(/[、，]/).map(x => x.trim()).join('\n');   // one-line lists -> one per line
+    if (!st.includes('\n')) st = st.split(/\s*(?=\d+[.)、]\s*\D)/).join('\n');
+    const src = g(r, 'source');
+    items.push({ name, dup, cat: cp[0] || '', diff: d, min: mins(g(r, 'minutes')), serv: parseInt(g(r, 'servings')) || 0, tags,
+      src: /^https?:/.test(src) ? src : '', ing, steps: st.split('\n').map(x => x.replace(/^\s*\d+[.)、]\s*/, '').trim()).filter(Boolean).join('\n'), note: g(r, 'notes') });
   });
   return { items, warn };
 }
+function exportXlsx() {
+  download(makeXlsx([HEADERS, ...R.map(r => [r.name, catName(r.cat), r.diff ? DL[DIFF.indexOf(r.diff)] : '', r.min || '', r.serv || '', r.tags.join(', '), r.src, r.ing, r.steps, r.note])]),
+    'recipes-' + new Date().toISOString().slice(0, 10) + '.xlsx');
+}
 function batchDlg() {
-  dialog(h('h2', { textContent: 'Batch import' }),
-    h('p', { class: 'dim', textContent: '1. Download the Excel template and fill one recipe per row. 2. Choose the file. You will see a preview before anything is saved.' }),
+  dialog(h('h2', { textContent: 'Import' }),
+    h('p', { class: 'dim', textContent: 'Excel / CSV: download the template, fill one recipe per row, then choose the file — you get a preview first. JSON: choose a backup file exported from this page (merged by recipe, newer edit wins).' }),
     h('div', { class: 'row' }, btn('Download template (.xlsx)', () => download(makeXlsx([HEADERS,
       ['Tomato & Egg Stir-fry', 'Quick', 'Easy', 15, 2, 'rice dish, low-fat', 'https://example.com', '# Main\n2 tomatoes\n3 eggs\n# Seasoning\nSalt', '1. Cut tomatoes, beat eggs\n2. Scramble eggs, set aside\n3. Fry tomatoes, add eggs back', 'Blanch tomatoes for easy peeling'],
       ['Scallion Oil Noodles', 'Noodles', 'Medium', 25, 2, 'noodles', '', 'Noodles 200 g\nScallions 1 bunch', 'Boil noodles\nFry scallions in oil\nToss together', '']]), 'recipe-template.xlsx'), 'out'),
-      btn('Choose file (.xlsx / .csv)', () => $('#xlsFile').click(), 'pri')), h('div', { class: 'row', style: 'margin-top:14px' }, h('span', { class: 'sp' }), closeBtn()));
+      btn('Choose file (.xlsx / .csv / .json)', () => $('#xlsFile').click(), 'pri')),
+    (() => { const ta = h('textarea', { placeholder: 'Or paste rows copied from Excel here (include the header row)', style: 'min-height:90px;margin-top:12px' }); return h('div', {}, ta, h('div', { style: 'margin-top:8px' }, btn('Preview pasted rows', () => { if (ta.value.trim()) previewRows(parseCSV(ta.value)); }))); })(),
+    h('div', { class: 'row', style: 'margin-top:14px' }, h('span', { class: 'sp' }), closeBtn()));
 }
 async function batchFile(file) {
+  try { previewRows(/\.csv$/i.test(file.name) ? parseCSV(await file.text()) : await readXlsx(await file.arrayBuffer())); }
+  catch (e) { alert('Could not read that file. Please use the downloaded template (.xlsx) or a .csv.'); }
+}
+function previewRows(rows) {
   try {
-    const rows = /\.csv$/i.test(file.name) ? parseCSV(await file.text()) : await readXlsx(await file.arrayBuffer()), { items, warn } = plan(rows);
-    if (!items.length) { alert('No recipes found. Please use the template columns.'); return; }
+    const { items, warn } = plan(rows);
+    if (!items.length) { alert('No recipes found. The first row I saw was: ' + (rows[0] || []).join(' | ') + '\nPlease use the template columns (Name, Category, …).'); return; }
     const dups = items.filter(x => x.dup).length, chk = h('input', { type: 'checkbox', style: 'width:auto' }), go = async () => {
       let n = 0, now = Date.now();
       for (const it of items) {
@@ -473,7 +499,7 @@ async function batchFile(file) {
       await DB.put('meta', CATS, 'cats'); $('#dlg').close(); toast(`Imported ${n} recipes`); renderHome();
     };
     dialog(h('h2', { textContent: 'Preview' }), h('div', { textContent: `${items.length} recipes found${dups ? `, ${dups} already exist (same name)` : ''}.` }),
-      h('ul', {}, ...items.slice(0, 8).map(x => h('li', { textContent: x.name + (x.cat ? ' · ' + x.cat : '') + (x.dup ? ' (duplicate)' : '') })), ...(items.length > 8 ? [h('li', { class: 'dim', textContent: `…and ${items.length - 8} more` })] : [])),
+      h('ul', {}, ...items.slice(0, 8).map(x => h('li', { textContent: [x.name, x.cat, x.min && x.min + ' min', x.serv && x.serv + ' servings'].filter(Boolean).join(' · ') + (x.dup ? ' (duplicate)' : '') })), ...(items.length > 8 ? [h('li', { class: 'dim', textContent: `…and ${items.length - 8} more` })] : [])),
       ...warn.slice(0, 5).map(w => h('div', { class: 'dim', textContent: '⚠ ' + w })),
       ...(dups ? [h('label', { class: 'row', style: 'margin:8px 0' }, chk, 'Import duplicates too (default: skip)')] : []),
       h('div', { class: 'row', style: 'margin-top:12px' }, h('span', { class: 'sp' }), closeBtn(), btn(`Import`, go, 'pri')));
@@ -503,7 +529,7 @@ function route() {
   $('#logo').onclick = () => location.hash = '';
   $('#newBtn').onclick = () => location.hash = '#new'; $('#rollBtn').onclick = roll; $('#menuBtn').onclick = menu;
   $('#jsonFile').onchange = e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; };
-  $('#xlsFile').onchange = e => { if (e.target.files[0]) batchFile(e.target.files[0]); e.target.value = ''; };
+  $('#xlsFile').onchange = e => { const f = e.target.files[0]; if (f) { $('#dlg').open && $('#dlg').close(); /\.json$/i.test(f.name) ? importJSON(f) : batchFile(f); } e.target.value = ''; };
   document.addEventListener('paste', e => { if (D && !$('#form').hidden) for (const it of e.clipboardData.items) if (it.type.startsWith('image/')) setImg(it.getAsFile()); });
   document.addEventListener('dragover', e => e.preventDefault());
   document.addEventListener('drop', e => { if (!$('#form').hidden) { e.preventDefault(); setImg(e.dataTransfer.files[0]); } });

@@ -29,3 +29,4 @@ export async function onRequest({ request: req, env, params }) {
   }
   return deny(404, 'Not found');
 }
+ 

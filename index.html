@@ -127,10 +127,57 @@ body.ro .star{pointer-events:none}
   dialog button{min-height:40px}
   #toast{bottom:calc(16px + env(safe-area-inset-bottom));max-width:92vw}
 }
+
+.sd-head{display:none}
+.sd-foot{margin-top:14px;display:flex;gap:8px}
+.grp.tgl{cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none}
+.gn{background:var(--ac);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;letter-spacing:0;text-transform:none}
+.chev{margin-left:auto}
+#side section:first-child .grp{margin-top:0}
+#rollBig,#fab,#quick{display:none}
+.tagbox{max-height:34vh;overflow:auto;overscroll-behavior:contain;padding-bottom:4px}
+.tsearch{margin-bottom:8px;padding:5px 10px}
+.rcv{width:100%;aspect-ratio:4/3;border-radius:16px;font-size:96px;margin-top:12px}
+.rnm{font:700 28px var(--serif);margin:12px 0 2px;text-align:center;min-height:38px}
+.rsub{text-align:center;min-height:22px}
+.big{flex:1;min-height:48px;font-size:16px;border-radius:12px}
+.big:disabled{opacity:.5}
+.pop{animation:pop .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(.88)}100%{transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.pop{animation:none}}
+.dice{display:grid;place-items:center;color:var(--ac);margin:10px 0;animation:wob .35s infinite}
+.spin{font:700 22px var(--serif);text-align:center;min-height:34px;margin-bottom:6px}
+@keyframes wob{0%{transform:rotate(-16deg) scale(1)}50%{transform:rotate(16deg) scale(1.12)}100%{transform:rotate(-16deg) scale(1)}}
+@media(prefers-reduced-motion:reduce){.dice{animation:none}}
+/* ===== Mobile fixes: scrollable/collapsible filter drawer, big roll button ===== */
+@media(max-width:640px){
+  html,body{overflow-x:hidden}
+  body.nosb #side,#side{display:flex;flex-direction:column;padding:0;overflow:hidden;bottom:auto;height:100vh;height:100dvh}
+  .sd-head{display:flex;align-items:center;justify-content:space-between;flex:none;font-size:18px;padding:calc(12px + env(safe-area-inset-top)) 12px 6px calc(16px + env(safe-area-inset-left))}
+  .sd-head .ic{font-size:20px;min-width:40px;min-height:40px;justify-content:center;color:var(--ink)}
+  .sd-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 16px 16px calc(16px + env(safe-area-inset-left))}
+  .grp.tgl{height:44px;margin:6px 0 0;border-bottom:1px solid var(--line)}
+  .sd-foot{flex:none;margin:0;padding:10px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--line);background:#FFFDF9}
+  .mdone{display:block;flex:1;height:48px;margin:0;font-size:16px}
+  .tags{gap:8px;padding:8px 0} .tg{padding:6px 14px;font-size:14px}
+  .bar{flex-wrap:wrap}
+  #rollBtn{display:none}
+  #quick{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none} #quick::-webkit-scrollbar{display:none}
+  .qc{flex:none;min-height:34px;padding:0 14px;font-size:14px}
+  #fab{display:grid;place-items:center;position:fixed;right:calc(16px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));width:60px;height:60px;padding:0;border:0;border-radius:50%;background:var(--ac);color:#fff;box-shadow:0 6px 18px rgba(217,80,47,.45);z-index:12}
+  body:not([data-v="home"]) #fab,body.sbopen #fab{display:none}
+  dialog.full[open]{display:flex;flex-direction:column;justify-content:center;min-height:80vh;min-height:80dvh}
+  #content{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+  dialog .cv.big{font-size:72px;border-radius:14px}
+  dialog .row.rb{flex-wrap:wrap}
+  dialog .row.rb button{flex:1 1 40%;min-height:46px}
+  dialog .row.rb .pri{flex:1 1 100%;order:-1;min-height:56px;font-size:18px}
+}
 </style>
 </head>
 <body>
 <div id="scrim"></div>
+<button id="fab" aria-label="What to eat today?"></button>
 <div id="top">
   <button class="ic" id="sbBtn" title="Toggle filters" style="color:var(--ink)"></button>
   <div class="logo" id="logo" style="cursor:pointer"><i></i>My Recipes</div>
@@ -141,7 +188,7 @@ body.ro .star{pointer-events:none}
   <button class="pri" id="newBtn"></button>
   <button class="ic" id="menuBtn" title="More" style="color:var(--ink)"></button>
 </div>
-<div id="home" class="body"><aside id="side"></aside><main id="content"><div class="bar"><b id="info"></b><span class="sp"></span><span class="dim">Sort</span><select id="sort"></select></div><div id="bk"></div><div id="grid"></div></main></div>
+<div id="home" class="body"><aside id="side"></aside><main id="content"><div id="quick"></div><div class="bar"><b id="info"></b><span class="sp"></span><span class="dim">Sort</span><select id="sort"></select></div><div id="bk"></div><div id="grid"></div></main></div>
 <div id="detail" hidden></div>
 <div id="form" hidden></div>
 <dialog id="dlg"></dialog>
@@ -231,23 +278,47 @@ const filtering = () => F.q || F.cat || F.diff || F.time || F.tags.length;
 const clearF = () => { F = { q: '', cat: null, diff: null, time: null, tags: [] }; $('#q').value = ''; renderHome(); };
 
 /* ===== 5. Home: sidebar + grid ===== */
+const GRP = JSON.parse(localStorage.getItem('rc.grp') || '{}');                       // sidebar groups the user collapsed
+let tagQ = '';
 function renderSide() {
+  const sb = $('#side .sd-body'), tb = $('#side .tagbox'), sst = sb ? sb.scrollTop : 0, tst = tb ? tb.scrollTop : 0;      // keep scroll positions across re-renders
   const tog = (k, v) => () => { F[k] = F[k] === v ? null : v; renderHome(); };
   const item = (label, n, on, fn, dot) => h('div', { class: 'it' + (on ? ' on' : ''), on: { click: fn } }, ...(dot ? [h('span', { class: 'sw', style: 'background:' + dot })] : []), label, h('span', { class: 'n', textContent: n }));
+  const group = (key, title, note, ...kids) => {
+    const shut = GRP[key] === 0;
+    return h('section', {}, h('div', { class: 'grp tgl', on: { click: () => { GRP[key] = shut ? 1 : 0; localStorage.setItem('rc.grp', JSON.stringify(GRP)); renderSide(); } } },
+      title, ...(note ? [h('span', { class: 'gn', textContent: note })] : []), h('span', { class: 'chev', textContent: shut ? '▸' : '▾' })), ...(shut ? [] : [h('div', {}, ...kids)]));
+  };
   const tags = {}; R.forEach(r => r.tags.forEach(t => tags[t] = (tags[t] || 0) + 1));
+  const tnames = Object.keys(tags).sort(), tagbox = h('div', { class: 'tags tagbox' });
+  const fillTags = () => {                                                                // scrollable tag area + search, so many tags stay reachable
+    const q = tagQ.toLowerCase(), list = tnames.filter(t => t.toLowerCase().includes(q));
+    tagbox.replaceChildren(...list.map(t => h('button', { class: 'tg' + (F.tags.includes(t) ? ' on' : ''), textContent: '#' + t + ' ' + tags[t],
+      on: { click: () => { F.tags = F.tags.includes(t) ? F.tags.filter(x => x !== t) : [...F.tags, t]; renderHome(); } } })));
+    if (!list.length) tagbox.append(h('span', { class: 'dim', textContent: 'No matching tags' }));
+  };
+  fillTags();
+  const n = visible().length, close = () => document.body.classList.remove('sbopen');
   $('#side').replaceChildren(
-    h('button', { class: 'mdone pri', textContent: 'Show results', on: { click: () => document.body.classList.remove('sbopen') } }),
-    h('div', { class: 'grp', textContent: 'Category', style: 'margin-top:0' }),
-    item('All', R.length, !F.cat, () => { F.cat = null; renderHome(); }),
-    ...CATS.map(c => item(c.name, R.filter(r => r.cat === c.id).length, F.cat === c.id, tog('cat', c.id))),
-    h('div', { class: 'grp', textContent: 'Difficulty' }),
-    ...DIFF.map((d, i) => item(DL[i], R.filter(r => r.diff === d).length, F.diff === d, tog('diff', d), DDOT[i])),
-    h('div', { class: 'grp', textContent: 'Time' }),
-    item('Within 30 min', R.filter(r => r.min && r.min <= 30).length, F.time === 30, tog('time', 30)),
-    item('Within 1 hour', R.filter(r => r.min && r.min <= 60).length, F.time === 60, tog('time', 60)),
-    ...(Object.keys(tags).length ? [h('div', { class: 'grp', textContent: 'Tags' }), h('div', { class: 'tags' }, ...Object.keys(tags).sort().map(t =>
-      h('button', { class: 'tg' + (F.tags.includes(t) ? ' on' : ''), textContent: '#' + t, on: { click: () => { F.tags = F.tags.includes(t) ? F.tags.filter(x => x !== t) : [...F.tags, t]; renderHome(); } } })))] : []),
-    ...(filtering() ? [h('div', { style: 'margin-top:18px' }, btn('Clear filters', clearF))] : []));
+    h('div', { class: 'sd-head' }, h('b', { textContent: 'Filters' }), h('button', { class: 'ic', textContent: '✕', title: 'Close', on: { click: close } })),
+    h('div', { class: 'sd-body' },
+      group('cat', 'Category', F.cat ? '1' : '', item('All', R.length, !F.cat, () => { F.cat = null; renderHome(); }),
+        ...CATS.map(c => item(c.name, R.filter(r => r.cat === c.id).length, F.cat === c.id, tog('cat', c.id)))),
+      group('diff', 'Difficulty', F.diff ? '1' : '', ...DIFF.map((d, i) => item(DL[i], R.filter(r => r.diff === d).length, F.diff === d, tog('diff', d), DDOT[i]))),
+      group('time', 'Time', F.time ? '1' : '', item('Within 30 min', R.filter(r => r.min && r.min <= 30).length, F.time === 30, tog('time', 30)),
+        item('Within 1 hour', R.filter(r => r.min && r.min <= 60).length, F.time === 60, tog('time', 60))),
+      ...(Object.keys(tags).length ? [group('tags', 'Tags', F.tags.length ? String(F.tags.length) : '', ...(tnames.length > 12 ? [h('input', { class: 'tsearch', placeholder: 'Search tags', value: tagQ, on: { input: e => { tagQ = e.target.value; fillTags(); } } })] : []), tagbox)] : [])),
+    h('div', { class: 'sd-foot' }, ...(filtering() ? [btn('Clear filters', clearF)] : []), h('button', { class: 'mdone pri', textContent: `Show ${n} ${n === 1 ? 'recipe' : 'recipes'}`, on: { click: close } })));
+  const nb = $('#side .sd-body'), nt = $('#side .tagbox'); if (nb) nb.scrollTop = sst; if (nt) nt.scrollTop = tst;
+}
+function renderQuick() {                                                                  // mobile: swipeable category chips + active filters
+  const q = $('#quick'); if (!q) return;
+  const n = (F.diff ? 1 : 0) + (F.time ? 1 : 0) + F.tags.length, chip = (t, on, fn) => h('button', { class: 'tg qc' + (on ? ' on' : ''), textContent: t, on: { click: fn } });
+  q.replaceChildren(chip('Filters' + (n ? ` (${n})` : ''), n > 0, () => document.body.classList.add('sbopen')), chip('All', !F.cat, () => { F.cat = null; renderHome(); }),
+    ...CATS.map(c => chip(c.name, F.cat === c.id, () => { F.cat = F.cat === c.id ? null : c.id; renderHome(); })),
+    ...(F.diff ? [chip(DL[DIFF.indexOf(F.diff)] + ' ×', true, () => { F.diff = null; renderHome(); })] : []),
+    ...(F.time ? [chip(`≤${F.time} min ×`, true, () => { F.time = null; renderHome(); })] : []),
+    ...F.tags.map(t => chip('#' + t + ' ×', true, () => { F.tags = F.tags.filter(x => x !== t); renderHome(); })));
 }
 function card(r) {
   const cv = cover(r, 'cv'), c = catName(r.cat), m = metaLine(r);
@@ -262,7 +333,7 @@ function card(r) {
       h('div', { class: 'ops' }, ib('edit', () => location.hash = '#e/' + r.id, 'Edit'), ib('trash', () => remove(r), 'Delete'))));
 }
 function renderHome() {
-  renderSide();
+  renderSide(); renderQuick();
   const list = visible(), g = $('#grid'), old = R.length && (!lastExport || Date.now() - lastExport > 30 * 864e5);
   $('#info').textContent = R.length ? `${list.length} ${list.length === 1 ? 'recipe' : 'recipes'}` : '';
   $('#bk').replaceChildren(...(old ? [h('div', { class: 'box row', style: 'padding:8px 14px;margin-bottom:14px' }, h('span', { class: 'dim sp', textContent: 'Tip: export a backup file now and then — data lives only in this browser.' }), btn('Export backup', () => exportJSON(true)))] : []));
@@ -378,7 +449,7 @@ async function save() {
 }
 
 /* ===== 10. Dialogs: menu, categories, roll ===== */
-function dialog(...kids) { const d = $('#dlg'); d.onclose = null; d.replaceChildren(...kids); if (!d.open) d.showModal(); return d; }
+function dialog(...kids) { const d = $('#dlg'); d.onclose = null; d.className = ''; d.replaceChildren(...kids); if (!d.open) d.showModal(); return d; }
 const closeBtn = () => btn('Close', () => $('#dlg').close());
 function menu() {
   dialog(h('h2', { textContent: 'More' }),
@@ -398,12 +469,30 @@ function manageCats(after) {
   };
   draw();
 }
+function paintCover(el, r) {
+  const g = grad(r.name); el.style.background = ''; el.style.backgroundImage = ''; el.textContent = '';
+  if (T[r.id]) el.style.backgroundImage = `url(${T[r.id]})`; else { el.style.background = `linear-gradient(135deg,${g[0]},${g[1]})`; el.textContent = [...r.name][0].toUpperCase(); }
+}
+let rollTok = 0;
 function roll() {
   const pool = visible(); if (!pool.length) { toast('No recipes to pick from'); return; }
-  const pick = pool.length > 1 ? pool.filter(r => r.id !== lastRoll) : pool, r = pick[Math.floor(Math.random() * pick.length)]; lastRoll = r.id;
-  dialog(h('h2', { textContent: 'What to eat today?' }), cover(r, 'cv'), h('h3', { textContent: r.name, style: 'font:700 22px var(--serif);margin:12px 0 2px' }),
-    h('div', { class: 'dim', textContent: [metaLine(r), r.diff && DL[DIFF.indexOf(r.diff)]].filter(Boolean).join(' · ') + (filtering() ? '  (picked from current filters)' : '') }),
-    h('div', { class: 'row', style: 'margin-top:14px' }, btn('Roll again', roll), btn("Let's cook this", () => { $('#dlg').close(); location.hash = '#r/' + r.id; }, 'pri'), closeBtn()));
+  const pick = pool.length > 1 ? pool.filter(r => r.id !== lastRoll) : pool, fin = pick[Math.floor(Math.random() * pick.length)], tok = ++rollTok; lastRoll = fin.id;
+  const cv = h('div', { class: 'cv rcv' }), nm = h('div', { class: 'rnm' }), sub = h('div', { class: 'dim rsub' });
+  const again = h('button', { class: 'big', textContent: 'Roll again', disabled: true, on: { click: roll } });
+  const go = h('button', { class: 'big pri', textContent: "Let's cook this", disabled: true, on: { click: () => { $('#dlg').close(); location.hash = '#r/' + fin.id; } } });
+  const d = dialog(h('div', { class: 'row' }, h('h2', { textContent: 'What to eat today?', style: 'margin:0' }), h('span', { class: 'sp' }), h('button', { class: 'ic', textContent: '✕', style: 'font-size:20px;color:var(--ink)', on: { click: () => $('#dlg').close() } })),
+    cv, nm, sub, h('div', { class: 'row', style: 'margin-top:14px' }, again, go));
+  d.classList.add('full'); d.onclose = () => { rollTok++; };
+  const seq = Array.from({ length: Math.min(16, pool.length * 3 + 8) }, () => pool[Math.floor(Math.random() * pool.length)]).concat(fin), reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let i = 0;
+  const step = () => {
+    if (tok !== rollTok) return;
+    const r = seq[i], last = i === seq.length - 1;
+    paintCover(cv, r); nm.textContent = r.name; sub.textContent = [metaLine(r), r.diff && DL[DIFF.indexOf(r.diff)]].filter(Boolean).join(' · ');
+    if (last) { cv.classList.add('pop'); nm.classList.add('pop'); again.disabled = go.disabled = false; sub.textContent += (sub.textContent ? ' · ' : '') + `picked from ${pool.length}`; if (navigator.vibrate) navigator.vibrate(30); return; }
+    i++; setTimeout(step, reduce ? 0 : 60 + Math.pow(i / seq.length, 2) * 340);
+  };
+  step();
 }
 
 /* ===== 11. JSON backup ===== */
@@ -676,7 +765,7 @@ function route() {
   $('#sort').onchange = e => { sortKey = e.target.value; localStorage.setItem('rc.sort', sortKey); renderHome(); };
   $('#q').oninput = e => { F.q = e.target.value; if (location.hash) location.hash = ''; else renderHome(); };
   $('#logo').onclick = () => location.hash = '';
-  $('#newBtn').onclick = () => location.hash = '#new'; $('#rollBtn').onclick = roll; $('#menuBtn').onclick = menu;
+  $('#newBtn').onclick = () => location.hash = '#new'; $('#rollBtn').onclick = roll; $('#fab').innerHTML = ico('dice', 28); $('#fab').onclick = roll; $('#menuBtn').onclick = menu;
   $('#jsonFile').onchange = e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; };
   $('#xlsFile').onchange = e => { const f = e.target.files[0]; if (f) { $('#dlg').open && $('#dlg').close(); /\.json$/i.test(f.name) ? importJSON(f) : batchFile(f); } e.target.value = ''; };
   document.addEventListener('paste', e => { if (D && !$('#form').hidden) for (const it of e.clipboardData.items) if (it.type.startsWith('image/')) setImg(it.getAsFile()); });
